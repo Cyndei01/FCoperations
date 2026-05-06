@@ -4,7 +4,7 @@ import streamlit as st
 
 from app_config import OWNER_SETTINGS, PAGES
 from feature_pages.upload_pay_sheets import render_upload_manager
-from services.supabase import supabase_ready, upload_file
+from services.supabase import download_knowledge_manifest, supabase_ready, upload_knowledge_file
 from styles import page_header
 
 
@@ -48,12 +48,16 @@ def _render_settings_login() -> None:
 
 
 def _settings_password() -> str:
-    return os.getenv("SETTINGS_PASSWORD") or os.getenv("APP_PASSWORD", "")
+    return os.getenv("SETTINGS_PASSWORD") or os.getenv("APP_PASSWORD", "") or _secret("SETTINGS_PASSWORD") or _secret("APP_PASSWORD")
 
 
 def _render_knowledge_files() -> None:
     st.write("Upload reference files that should inform the Sprinter Heat Map and Relocation Finder.")
     st.caption("Pay sheets should be uploaded in the Upload Pay Sheets tab. Knowledge files are stored as reference material only.")
+    _load_saved_knowledge_manifest()
+    if not supabase_ready():
+        st.warning("Supabase is not configured, so knowledge files will disappear after refresh.")
+
     uploaded_files = st.file_uploader(
         "Knowledge files",
         type=["txt", "md", "csv", "xlsx", "pdf"],
@@ -72,12 +76,13 @@ def _render_knowledge_files() -> None:
                 }
             )
             if supabase_ready():
-                ok, message = upload_file(uploaded_file.name, content, "knowledge-files")
+                ok, message = upload_knowledge_file(uploaded_file.name, content)
                 if ok:
                     st.caption(f"Saved {uploaded_file.name} to Supabase: {message}")
                 else:
                     st.warning(message)
-        st.session_state["knowledge_files"] = stored
+        saved_manifest = download_knowledge_manifest() if supabase_ready() else []
+        st.session_state["knowledge_files"] = saved_manifest or stored
         st.success(f"Stored {len(stored)} knowledge file(s) for this session.")
 
     knowledge_files = st.session_state.get("knowledge_files", [])
@@ -97,6 +102,21 @@ def _render_knowledge_files() -> None:
         st.caption("These files are stored in the current app session and saved to Supabase when configured.")
     else:
         st.info("No knowledge files uploaded yet.")
+
+
+def _load_saved_knowledge_manifest() -> None:
+    if st.session_state.get("knowledge_files") or not supabase_ready():
+        return
+    saved_files = download_knowledge_manifest()
+    if saved_files:
+        st.session_state["knowledge_files"] = saved_files
+
+
+def _secret(name: str) -> str:
+    try:
+        return str(st.secrets.get(name, ""))
+    except Exception:
+        return ""
 
 
 def _render_owner_settings() -> None:

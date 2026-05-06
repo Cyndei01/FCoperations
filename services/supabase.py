@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import json
 from io import BytesIO
 from datetime import datetime, timezone
 from typing import Any
@@ -55,6 +56,7 @@ def test_supabase_connection() -> tuple[bool, str]:
 
 
 PARSED_LOAD_HISTORY_PATH = "parsed-load-history/latest.csv"
+KNOWLEDGE_MANIFEST_PATH = "knowledge-files/manifest.json"
 
 
 def upload_file(file_name: str, content: bytes, folder: str, object_path: str | None = None) -> tuple[bool, str]:
@@ -62,6 +64,9 @@ def upload_file(file_name: str, content: bytes, folder: str, object_path: str | 
         return False, "Supabase is not configured."
 
     bucket = _bucket_name()
+    if not _ensure_bucket(bucket):
+        return False, f"Supabase storage bucket '{bucket}' is not available."
+
     object_path = object_path or _object_path(file_name, folder)
     try:
         response = requests.post(
@@ -112,6 +117,64 @@ def download_parsed_load_history():
     if not ok:
         return None
     return pd.read_csv(BytesIO(payload))
+
+
+def upload_knowledge_file(file_name: str, content: bytes) -> tuple[bool, str]:
+    ok, object_path = upload_file(file_name, content, "knowledge-files")
+    if not ok:
+        return ok, object_path
+
+    manifest = download_knowledge_manifest()
+    record = {
+        "name": file_name,
+        "type": file_name.rsplit(".", 1)[-1].lower() if "." in file_name else "",
+        "size": len(content),
+        "path": object_path,
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+    }
+    manifest = [item for item in manifest if item.get("name") != file_name]
+    manifest.append(record)
+    manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
+    manifest_ok, manifest_message = upload_file(
+        "manifest.json",
+        manifest_bytes,
+        "knowledge-files",
+        KNOWLEDGE_MANIFEST_PATH,
+    )
+    if not manifest_ok:
+        return False, manifest_message
+    return True, object_path
+
+
+def download_knowledge_manifest() -> list[dict[str, Any]]:
+    ok, payload = download_file(KNOWLEDGE_MANIFEST_PATH)
+    if not ok:
+        return []
+    try:
+        data = json.loads(payload.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError, AttributeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    return [item for item in data if isinstance(item, dict)]
+
+
+def _ensure_bucket(bucket: str) -> bool:
+    if not supabase_ready():
+        return False
+    try:
+        response = requests.get(
+            f"{_url()}/storage/v1/bucket/{bucket}",
+            headers=_headers(),
+            timeout=REQUEST_TIMEOUT_SECONDS,
+        )
+        if response.status_code == 200:
+            return True
+    except requests.RequestException:
+        return False
+    if _service_role_key():
+        return _create_bucket(bucket)
+    return False
 
 
 def _create_bucket(bucket: str) -> bool:

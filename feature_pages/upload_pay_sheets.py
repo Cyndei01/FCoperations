@@ -44,6 +44,10 @@ def render_upload_manager() -> None:
         col1, col2 = st.columns(2)
         col1.metric("Loaded History", f"{len(current_loads):,} loads")
         col2.metric("Source", st.session_state.get("load_history_source", "Current session"))
+    if supabase_ready():
+        st.caption("Supabase storage is connected. Parsed load history will be reused after refresh.")
+    else:
+        st.warning("Supabase is not configured. Uploaded pay sheets will not persist after refresh.")
 
     uploaded_file = st.file_uploader("Upload PDF, CSV, or Excel pay sheet", type=["pdf", "csv", "xlsx"])
     if uploaded_file:
