@@ -41,16 +41,24 @@ MOMENTUM = {
     "token_env": "MOMENTUM_JWT",
 }
 
+SUPABASE = {
+    "url_env": "SUPABASE_URL",
+    "service_role_key_env": "SUPABASE_SERVICE_ROLE_KEY",
+    "anon_key_env": "SUPABASE_ANON_KEY",
+    "storage_bucket_env": "SUPABASE_STORAGE_BUCKET",
+    "default_storage_bucket": "fcoperations",
+}
+
 WEB_PAGES = {
-    "Load 1 Load Board": {
+    "Load 1": {
         "url": "https://fleet.load1.com/vehicles",
         "note": "If the board blocks embedding, use the open-site button.",
     },
-    "Expeditus Load Board": {
+    "Expeditus": {
         "url": "https://www.fleet-vu.com",
         "note": "If Fleet-Vu blocks embedding, use the open-site button.",
     },
-    "WhatsApp Board": {
+    "Whatsapp": {
         "url": "https://web.whatsapp.com",
         "note": "WhatsApp Web may require browser sign-in and may block embedding in some environments.",
     },
@@ -120,17 +128,17 @@ MARKET_INTELLIGENCE_SOURCES = [
 
 PAGES = [
     {
-        "name": "Load 1 Load Board",
+        "name": "Load 1",
         "module": "feature_pages.web_access",
         "enabled": True,
     },
     {
-        "name": "Expeditus Load Board",
+        "name": "Expeditus",
         "module": "feature_pages.web_access",
         "enabled": True,
     },
     {
-        "name": "WhatsApp Board",
+        "name": "Whatsapp",
         "module": "feature_pages.web_access",
         "enabled": True,
     },

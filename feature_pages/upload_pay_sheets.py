@@ -2,6 +2,7 @@ import pandas as pd
 import streamlit as st
 
 from services.load_parser import origin_market_summary, parse_pay_sheet_loads
+from services.supabase import supabase_ready, upload_file
 from styles import page_header
 
 
@@ -41,9 +42,16 @@ def render_upload_manager() -> None:
     uploaded_file = st.file_uploader("Upload PDF, CSV, or Excel pay sheet", type=["pdf", "csv", "xlsx"])
     if uploaded_file:
         file_type = uploaded_file.name.rsplit(".", 1)[-1].lower()
+        file_content = uploaded_file.getvalue()
         st.success(f"Received {uploaded_file.name}.")
         st.write(f"File type: {file_type.upper()}")
         st.write(f"File size: {uploaded_file.size / 1024:.1f} KB")
+        if supabase_ready():
+            ok, message = upload_file(uploaded_file.name, file_content, "pay-sheets")
+            if ok:
+                st.caption(f"Saved to Supabase: {message}")
+            else:
+                st.warning(message)
 
         if file_type == "pdf":
             st.info("PDF upload is ready. Text extraction and payroll validation can be added as the next step.")

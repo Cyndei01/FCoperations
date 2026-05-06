@@ -22,10 +22,13 @@ MAPBOX_ACCESS_TOKEN = "your_mapbox_token"
 MOMENTUM_API_BASE_URL = "https://api.momentumiot.com"
 MOMENTUM_EMAIL = "your_momentum_email"
 MOMENTUM_PASSWORD = "your_momentum_password"
+SUPABASE_URL = "https://your-project-ref.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY = "your_service_role_key"
+SUPABASE_STORAGE_BUCKET = "fcoperations"
 ```
 
 ## Notes
 
 - Do not commit `.streamlit/secrets.toml`.
-- Uploaded files are currently session-based on Streamlit Community Cloud. For persistent storage, add Supabase storage/database.
+- Uploaded files are session-based until Supabase is configured. With Supabase secrets set, pay sheets and knowledge files are saved to Supabase Storage.
 - The app does not require an AI API key. It only needs one later if AI summarization or document reasoning is added.
