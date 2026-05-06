@@ -47,6 +47,7 @@ def render() -> None:
         heat_map = st.session_state.get("sprinter_heat_map")
         if not isinstance(heat_map, pd.DataFrame):
             heat_map = None
+        _render_relocation_signal_status(loads, heat_map)
 
         if st.button("Find Best Reposition Markets", use_container_width=True):
             with st.spinner("Ranking reposition options..."):
@@ -189,6 +190,27 @@ def _render_knowledge_file_status() -> None:
     knowledge_files = st.session_state.get("knowledge_files", [])
     if knowledge_files:
         st.caption(f"Knowledge files available for relocation context: {len(knowledge_files)}")
+
+
+def _render_relocation_signal_status(loads: pd.DataFrame, heat_map: pd.DataFrame | None) -> None:
+    load_count = len(loads)
+    if isinstance(heat_map, pd.DataFrame) and not heat_map.empty:
+        density_markets = len(heat_map)
+        density_points = int(
+            pd.to_numeric(heat_map.get("industrial_points", pd.Series(dtype=float)), errors="coerce")
+            .fillna(0)
+            .sum()
+        )
+        st.caption(
+            f"Ranking signals: distance first, {load_count:,} historical loads second, "
+            f"industrial/automotive density from {density_markets:,} heat-map markets third "
+            f"({density_points:,} density points)."
+        )
+    else:
+        st.caption(
+            f"Ranking signals: distance first and {load_count:,} historical loads second. "
+            "Industrial/automotive density is not active until the Sprinter Heat Map is built in this session."
+        )
 
 
 def _van_selector() -> str:

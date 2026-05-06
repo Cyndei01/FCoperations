@@ -6,10 +6,10 @@ import requests
 from services.google_maps import google_maps_ready, route_metrics
 from services.live_sources import weather_for_market
 from services.mapbox import mapbox_ready, route_metrics as mapbox_route_metrics
-from services.market_distance import estimated_distance_miles
+from services.market_distance import estimated_distance_detail
 
 
-RELOCATION_MODEL_VERSION = "distance-history-density-traffic-weather-v8"
+RELOCATION_MODEL_VERSION = "distance-history-density-traffic-weather-v9"
 
 
 def build_relocation_recommendations(
@@ -96,14 +96,15 @@ def _add_estimated_distance_metrics(current_market: str, targets: pd.DataFrame) 
     enriched = targets.copy()
     destination_markets = enriched["origin_market"].tolist()
     distances = []
+    distance_sources = []
     for market in destination_markets:
-        distances.append(estimated_distance_miles(current_market, market))
+        distance, source = estimated_distance_detail(current_market, market)
+        distances.append(distance)
+        distance_sources.append(source)
 
     enriched["distance_miles"] = distances
     enriched["drive_minutes"] = None
-    enriched["distance_source"] = enriched["distance_miles"].apply(
-        lambda distance: "Estimated" if pd.notna(distance) else "Unavailable"
-    )
+    enriched["distance_source"] = distance_sources
     enriched["traffic_condition"] = ""
     return enriched
 

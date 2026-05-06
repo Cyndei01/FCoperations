@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import math
 
+import requests
+
+from services.live_sources import geocode_market
+
 
 MARKET_COORDINATES = {
     "Detroit, MI": (42.3314, -83.0458),
@@ -66,7 +70,6 @@ MARKET_COORDINATES = {
     "Allentown, PA": (40.6023, -75.4714),
     "Harrisburg, PA": (40.2732, -76.8867),
     "Pittsburgh, PA": (40.4406, -79.9959),
-    "Clearfield, PA": (41.0273, -78.4392),
     "Erie, PA": (42.1292, -80.0851),
     "Latrobe, PA": (40.3212, -79.3795),
     "Hanover, PA": (39.8007, -76.9830),
@@ -91,13 +94,97 @@ MARKET_COORDINATES = {
     "Fort Wayne, IN": (41.0793, -85.1394),
 }
 
+STATE_CENTROIDS = {
+    "AL": (32.8067, -86.7911),
+    "AR": (34.9697, -92.3731),
+    "AZ": (33.7298, -111.4312),
+    "CA": (36.1162, -119.6816),
+    "CO": (39.0598, -105.3111),
+    "CT": (41.5978, -72.7554),
+    "DE": (39.3185, -75.5071),
+    "FL": (27.7663, -81.6868),
+    "GA": (33.0406, -83.6431),
+    "IA": (42.0115, -93.2105),
+    "ID": (44.2405, -114.4788),
+    "IL": (40.3495, -88.9861),
+    "IN": (39.8494, -86.2583),
+    "KS": (38.5266, -96.7265),
+    "KY": (37.6681, -84.6701),
+    "LA": (31.1695, -91.8678),
+    "MA": (42.2302, -71.5301),
+    "MD": (39.0639, -76.8021),
+    "ME": (44.6939, -69.3819),
+    "MI": (43.3266, -84.5361),
+    "MN": (45.6945, -93.9002),
+    "MO": (38.4561, -92.2884),
+    "MS": (32.7416, -89.6787),
+    "MT": (46.9219, -110.4544),
+    "NC": (35.6301, -79.8064),
+    "ND": (47.5289, -99.7840),
+    "NE": (41.1254, -98.2681),
+    "NH": (43.4525, -71.5639),
+    "NJ": (40.1430, -74.7311),
+    "NM": (34.8405, -106.2485),
+    "NV": (38.3135, -117.0554),
+    "NY": (42.1657, -74.9481),
+    "OH": (40.3888, -82.7649),
+    "OK": (35.5653, -96.9289),
+    "OR": (44.5720, -122.0709),
+    "PA": (40.5908, -77.2098),
+    "RI": (41.6809, -71.5118),
+    "SC": (33.8569, -80.9450),
+    "SD": (44.2998, -99.4388),
+    "TN": (35.7478, -86.6923),
+    "TX": (31.0545, -97.5635),
+    "UT": (40.1500, -111.8624),
+    "VA": (37.7693, -78.1700),
+    "VT": (44.0459, -72.7107),
+    "WA": (47.4009, -121.4905),
+    "WI": (44.2685, -89.6165),
+    "WV": (38.4912, -80.9545),
+    "WY": (42.7560, -107.3025),
+}
+
 
 def estimated_distance_miles(origin_market: str, target_market: str) -> float | None:
-    origin = MARKET_COORDINATES.get(_normalize_market(origin_market))
-    target = MARKET_COORDINATES.get(_normalize_market(target_market))
+    distance, _source = estimated_distance_detail(origin_market, target_market)
+    return distance
+
+
+def estimated_distance_detail(origin_market: str, target_market: str) -> tuple[float | None, str]:
+    origin, origin_source = _market_coordinate(origin_market)
+    target, target_source = _market_coordinate(target_market)
     if not origin or not target:
-        return None
-    return round(_haversine_miles(origin[0], origin[1], target[0], target[1]) * 1.18, 1)
+        return None, "Unavailable"
+    source = "Estimated"
+    sources = {origin_source, target_source}
+    if "State estimate" in sources:
+        source = "State estimate"
+    elif "Geocoded" in sources:
+        source = "Geocoded estimate"
+    return round(_haversine_miles(origin[0], origin[1], target[0], target[1]) * 1.18, 1), source
+
+
+def _market_coordinate(market: str) -> tuple[tuple[float, float] | None, str]:
+    known = MARKET_COORDINATES.get(_normalize_market(market))
+    if known:
+        return known, "Estimated"
+    try:
+        geocoded = geocode_market(market)
+    except requests.RequestException:
+        geocoded = None
+    if not geocoded:
+        state_coordinate = STATE_CENTROIDS.get(_state_code(market))
+        if state_coordinate:
+            return state_coordinate, "State estimate"
+        return None, "Unavailable"
+    return (float(geocoded["lat"]), float(geocoded["lon"])), "Geocoded"
+
+
+def _state_code(market: str) -> str:
+    if "," not in market:
+        return ""
+    return market.rsplit(",", 1)[1].strip().upper()
 
 
 def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
