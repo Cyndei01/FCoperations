@@ -4,7 +4,7 @@ import streamlit as st
 
 from app_config import OWNER_SETTINGS, PAGES
 from feature_pages.upload_pay_sheets import render_upload_manager
-from services.supabase import supabase_config_status, supabase_ready, test_supabase_connection, upload_file
+from services.supabase import supabase_ready, upload_file
 from styles import page_header
 
 
@@ -15,8 +15,8 @@ def render() -> None:
         _render_settings_login()
         return
 
-    tab_upload, tab_knowledge, tab_supabase, tab_settings = st.tabs(
-        ["Upload Pay Sheets", "Knowledge Files", "Supabase", "Owner Settings"]
+    tab_upload, tab_knowledge, tab_settings = st.tabs(
+        ["Upload Pay Sheets", "Knowledge Files", "Owner Settings"]
     )
 
     with tab_upload:
@@ -24,9 +24,6 @@ def render() -> None:
 
     with tab_knowledge:
         _render_knowledge_files()
-
-    with tab_supabase:
-        _render_supabase_settings()
 
     with tab_settings:
         _render_owner_settings()
@@ -96,30 +93,9 @@ def _render_knowledge_files() -> None:
             use_container_width=True,
             hide_index=True,
         )
-        st.caption("These files are stored in the current app session. Persistent storage can be added with Supabase.")
+        st.caption("These files are stored in the current app session and saved to Supabase when configured.")
     else:
         st.info("No knowledge files uploaded yet.")
-
-
-def _render_supabase_settings() -> None:
-    status = supabase_config_status()
-    st.dataframe(
-        [
-            {"Setting": "SUPABASE_URL", "Configured": status["url"]},
-            {"Setting": "SUPABASE_SERVICE_ROLE_KEY", "Configured": status["service_role_key"]},
-            {"Setting": "SUPABASE_ANON_KEY", "Configured": status["anon_key"]},
-            {"Setting": "Storage bucket", "Configured": status["bucket"]},
-        ],
-        use_container_width=True,
-        hide_index=True,
-    )
-    if st.button("Test Supabase Connection", use_container_width=True):
-        ok, message = test_supabase_connection()
-        if ok:
-            st.success(message)
-        else:
-            st.error(message)
-    st.caption("Add Supabase secrets in Streamlit Cloud. Files are uploaded to private Supabase Storage when configured.")
 
 
 def _render_owner_settings() -> None:

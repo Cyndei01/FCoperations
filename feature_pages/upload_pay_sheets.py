@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 
 from services.load_parser import origin_market_summary, parse_pay_sheet_loads
-from services.supabase import supabase_ready, upload_file
+from services.supabase import supabase_ready, upload_file, upload_parsed_load_history
 from styles import page_header
 
 
@@ -52,6 +52,8 @@ def render_upload_manager() -> None:
                 st.caption(f"Saved to Supabase: {message}")
             else:
                 st.warning(message)
+        if hasattr(uploaded_file, "seek"):
+            uploaded_file.seek(0)
 
         if file_type == "pdf":
             st.info("PDF upload is ready. Text extraction and payroll validation can be added as the next step.")
@@ -77,6 +79,12 @@ def render_upload_manager() -> None:
                 if loads.empty:
                     st.warning("No structured load records were found yet. The raw upload preview is available above.")
                 else:
+                    if supabase_ready():
+                        ok, message = upload_parsed_load_history(loads)
+                        if ok:
+                            st.caption("Saved parsed load history to Supabase for future app sessions.")
+                        else:
+                            st.warning(message)
                     summary = origin_market_summary(loads)
                     load_col1, load_col2, load_col3 = st.columns(3)
                     load_col1.metric("Loads Parsed", f"{len(loads):,}")

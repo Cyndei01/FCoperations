@@ -21,5 +21,19 @@ def render() -> None:
     col1.caption(note or url)
     col2.link_button("Open Site", url, use_container_width=True)
 
-    components.iframe(url, height=820, scrolling=True)
+    if page_name == "Whatsapp":
+        components.html(
+            f"""
+            <iframe
+                src="{url}"
+                style="width:100%; height:86vh; border:0;"
+                allow="clipboard-read; clipboard-write; camera; microphone; fullscreen; display-capture"
+                referrerpolicy="no-referrer-when-downgrade">
+            </iframe>
+            """,
+            height=900,
+            scrolling=True,
+        )
+    else:
+        components.iframe(url, height=820, scrolling=True)
     st.caption("Some websites block embedded frames. If this area is blank or refuses to load, use Open Site.")

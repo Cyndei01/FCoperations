@@ -139,6 +139,16 @@ def get_session_load_history(st_module) -> pd.DataFrame:
     loads = st_module.session_state.get("load_history")
     if isinstance(loads, pd.DataFrame):
         return loads
+    try:
+        from services.supabase import download_parsed_load_history
+
+        saved_loads = download_parsed_load_history()
+        if isinstance(saved_loads, pd.DataFrame) and not saved_loads.empty:
+            st_module.session_state["load_history"] = saved_loads
+            st_module.session_state["load_history_source"] = "Supabase saved load history"
+            return saved_loads
+    except Exception:
+        return pd.DataFrame()
     return pd.DataFrame()
 
 

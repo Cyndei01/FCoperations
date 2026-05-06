@@ -59,7 +59,7 @@ WEB_PAGES = {
         "note": "If Fleet-Vu blocks embedding, use the open-site button.",
     },
     "Whatsapp": {
-        "url": "https://web.whatsapp.com",
+        "url": "https://web.whatsapp.com/",
         "note": "WhatsApp Web may require browser sign-in and may block embedding in some environments.",
     },
 }
