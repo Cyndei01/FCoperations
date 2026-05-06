@@ -3,7 +3,6 @@ import importlib
 import streamlit as st
 
 from app_config import APP_NAME, APP_URL, COMPANY_NAME, PAGES, WEBSITE_URL
-from auth import logout, require_login
 from styles import apply_global_styles
 
 
@@ -15,9 +14,6 @@ st.set_page_config(
 )
 
 apply_global_styles()
-
-if not require_login():
-    st.stop()
 
 enabled_pages = [page for page in PAGES if page.get("enabled")]
 page_names = [page["name"] for page in enabled_pages]
@@ -39,11 +35,6 @@ with st.sidebar:
     st.markdown("---")
     st.caption(APP_URL.replace("https://", ""))
     st.caption(WEBSITE_URL.replace("https://", ""))
-    st.markdown("---")
-    st.caption(f"Signed in as {st.session_state.get('username', 'Local User')}")
-    if st.button("Logout", use_container_width=True):
-        logout()
-        st.rerun()
 
 selected_page = next(page for page in enabled_pages if page["name"] == selected_page_name)
 st.session_state["selected_page_name"] = selected_page_name
