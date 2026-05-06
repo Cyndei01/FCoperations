@@ -217,8 +217,14 @@ def _headers() -> dict[str, str]:
     key = _api_key()
     return {
         "apikey": key,
-        "Authorization": f"Bearer {key}",
+        "Authorization": _authorization_value(key),
     }
+
+
+def _authorization_value(key: str) -> str:
+    if key.startswith("sb_"):
+        return key
+    return f"Bearer {key}"
 
 
 def _api_key() -> str:
