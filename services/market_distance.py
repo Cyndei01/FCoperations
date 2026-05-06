@@ -66,6 +66,7 @@ MARKET_COORDINATES = {
     "Allentown, PA": (40.6023, -75.4714),
     "Harrisburg, PA": (40.2732, -76.8867),
     "Pittsburgh, PA": (40.4406, -79.9959),
+    "Clearfield, PA": (41.0273, -78.4392),
     "Erie, PA": (42.1292, -80.0851),
     "Latrobe, PA": (40.3212, -79.3795),
     "Hanover, PA": (39.8007, -76.9830),

@@ -9,7 +9,7 @@ from services.mapbox import mapbox_ready, route_metrics as mapbox_route_metrics
 from services.market_distance import estimated_distance_miles
 
 
-RELOCATION_MODEL_VERSION = "distance-history-density-traffic-weather-v7"
+RELOCATION_MODEL_VERSION = "distance-history-density-traffic-weather-v8"
 
 
 def build_relocation_recommendations(

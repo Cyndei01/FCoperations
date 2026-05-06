@@ -4,6 +4,7 @@ import os
 from typing import Any
 
 import requests
+import streamlit as st
 
 from services.market_distance import MARKET_COORDINATES
 
@@ -95,4 +96,10 @@ def _normalize_market(market: str) -> str:
 
 
 def _access_token() -> str:
-    return os.getenv("MAPBOX_ACCESS_TOKEN", "")
+    value = os.getenv("MAPBOX_ACCESS_TOKEN")
+    if value:
+        return value
+    try:
+        return str(st.secrets.get("MAPBOX_ACCESS_TOKEN", ""))
+    except Exception:
+        return ""
