@@ -145,14 +145,9 @@ def render() -> None:
         )
         return
 
-    data = pd.DataFrame(
-        [
-            {"Current Market": "Jackson, MS", "Target Market": "Memphis, TN", "Distance": 209, "Recommendation": "Approved"},
-            {"Current Market": "El Paso, TX", "Target Market": "Dallas, TX", "Distance": 635, "Recommendation": "Outside limit"},
-            {"Current Market": "Mobile, AL", "Target Market": "Atlanta, GA", "Distance": 328, "Recommendation": "Review"},
-        ]
-    )
-    st.dataframe(data, use_container_width=True, hide_index=True)
+    st.warning("No parsed load history is loaded yet.")
+    st.write("Go to Settings, unlock it, then use Upload Pay Sheets to upload the Excel load-history sheet.")
+    st.caption("Files uploaded under Knowledge Files are saved as reference material, but they do not add load rows to Relocation Finder.")
 
 
 def _driver_start_market_selector(market_options: list[str]) -> tuple[str, str, str]:

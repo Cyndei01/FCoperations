@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 
-from services.load_parser import origin_market_summary, parse_pay_sheet_loads
+from services.load_parser import get_session_load_history, origin_market_summary, parse_pay_sheet_loads
 from services.supabase import supabase_ready, upload_file, upload_parsed_load_history
 from styles import page_header
 
@@ -39,6 +39,12 @@ def render() -> None:
 
 
 def render_upload_manager() -> None:
+    current_loads = get_session_load_history(st)
+    if not current_loads.empty:
+        col1, col2 = st.columns(2)
+        col1.metric("Loaded History", f"{len(current_loads):,} loads")
+        col2.metric("Source", st.session_state.get("load_history_source", "Current session"))
+
     uploaded_file = st.file_uploader("Upload PDF, CSV, or Excel pay sheet", type=["pdf", "csv", "xlsx"])
     if uploaded_file:
         file_type = uploaded_file.name.rsplit(".", 1)[-1].lower()
