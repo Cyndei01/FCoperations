@@ -25,6 +25,7 @@ MOMENTUM_PASSWORD = "your_momentum_password"
 SUPABASE_URL = "https://your-project-ref.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY = "your_service_role_key"
 SUPABASE_STORAGE_BUCKET = "fcoperations"
+WHATSAPP_EMBED_URL = "optional_working_iframe_source_url"
 ```
 
 ## Notes
