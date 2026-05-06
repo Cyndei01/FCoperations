@@ -50,8 +50,11 @@ def test_supabase_connection() -> tuple[bool, str]:
     bucket = _bucket_name()
     if bucket in bucket_names:
         return True, f"Connected to Supabase. Storage bucket '{bucket}' is available."
-    if _service_role_key() and _create_bucket(bucket):
-        return True, f"Connected to Supabase. Created storage bucket '{bucket}'."
+    if _service_role_key():
+        created, message = _create_bucket(bucket)
+        if created:
+            return True, message
+        return False, message
     return True, f"Connected to Supabase. Storage bucket '{bucket}' was not found."
 
 
@@ -64,8 +67,9 @@ def upload_file(file_name: str, content: bytes, folder: str, object_path: str | 
         return False, "Supabase is not configured."
 
     bucket = _bucket_name()
-    if not _ensure_bucket(bucket):
-        return False, f"Supabase storage bucket '{bucket}' is not available."
+    bucket_ready, bucket_message = _ensure_bucket(bucket)
+    if not bucket_ready:
+        return False, bucket_message
 
     object_path = object_path or _object_path(file_name, folder)
     try:
@@ -159,9 +163,9 @@ def download_knowledge_manifest() -> list[dict[str, Any]]:
     return [item for item in data if isinstance(item, dict)]
 
 
-def _ensure_bucket(bucket: str) -> bool:
+def _ensure_bucket(bucket: str) -> tuple[bool, str]:
     if not supabase_ready():
-        return False
+        return False, "Supabase is not configured."
     try:
         response = requests.get(
             f"{_url()}/storage/v1/bucket/{bucket}",
@@ -169,15 +173,20 @@ def _ensure_bucket(bucket: str) -> bool:
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
         if response.status_code == 200:
-            return True
-    except requests.RequestException:
-        return False
+            return True, f"Supabase storage bucket '{bucket}' is available."
+    except requests.RequestException as error:
+        return False, f"Supabase bucket check failed: {error}"
     if _service_role_key():
-        return _create_bucket(bucket)
-    return False
+        created, message = _create_bucket(bucket)
+        return created, message
+    return (
+        False,
+        f"Supabase storage bucket '{bucket}' is not available. "
+        "Create that bucket in Supabase Storage, or add SUPABASE_SERVICE_ROLE_KEY so the app can create it.",
+    )
 
 
-def _create_bucket(bucket: str) -> bool:
+def _create_bucket(bucket: str) -> tuple[bool, str]:
     try:
         response = requests.post(
             f"{_url()}/storage/v1/bucket",
@@ -185,9 +194,11 @@ def _create_bucket(bucket: str) -> bool:
             json={"id": bucket, "name": bucket, "public": False},
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
-        return response.status_code in {200, 201, 409}
-    except requests.RequestException:
-        return False
+        if response.status_code in {200, 201, 409}:
+            return True, f"Supabase storage bucket '{bucket}' is available."
+        return False, f"Supabase could not create bucket '{bucket}': {response.status_code} {response.text}"
+    except requests.RequestException as error:
+        return False, f"Supabase bucket creation failed: {error}"
 
 
 def _object_path(file_name: str, folder: str) -> str:
