@@ -25,9 +25,21 @@ def render() -> None:
 
     if page_name == "Whatsapp":
         if url == "https://web.whatsapp.com/":
-            st.warning(
-                "WhatsApp Web blocks embedded frames outside WhatsApp-owned domains. "
-                "Use Open Site, or add a working WHATSAPP_EMBED_URL secret from the iframe source used on your website."
+            st.info(
+                "WhatsApp Web does not allow this Streamlit app to display it inside a frame. "
+                "Use the button above to open WhatsApp Web in a separate browser tab."
+            )
+            st.markdown(
+                """
+                <div class="fc-panel">
+                    <h3>WhatsApp Dispatch Board</h3>
+                    <p>
+                        Keep this app open for heat map and relocation work, then use WhatsApp Web
+                        in a separate tab for board messages and dispatch conversations.
+                    </p>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
             return
         components.html(
