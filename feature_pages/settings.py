@@ -53,6 +53,7 @@ def _settings_password() -> str:
 
 def _render_knowledge_files() -> None:
     st.write("Upload reference files that should inform the Sprinter Heat Map and Relocation Finder.")
+    st.caption("Pay sheets should be uploaded in the Upload Pay Sheets tab. Knowledge files are stored as reference material only.")
     uploaded_files = st.file_uploader(
         "Knowledge files",
         type=["txt", "md", "csv", "xlsx", "pdf"],

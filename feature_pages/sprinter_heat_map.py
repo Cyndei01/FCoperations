@@ -25,6 +25,7 @@ def render() -> None:
         st.info("Upload your Excel pay sheet history first. The heat map uses your actual pickup history as the strongest signal.")
         return
 
+    st.caption(f"Load history source: {st.session_state.get('load_history_source', 'Current session')}. Parsed loads: {len(loads):,}.")
     _render_knowledge_file_status()
 
     col1, col2 = st.columns(2)
@@ -48,15 +49,21 @@ def render() -> None:
             progress.progress(done / total)
 
         with st.spinner("Building sprinter opportunity heat map..."):
-            st.session_state["sprinter_heat_map"] = build_sprinter_heat_map(
-                loads,
-                market_limit,
-                radius_miles,
-                include_industrial_density,
-                industrial_market_limit,
-                update_progress,
-            )
-        status.write("Heat map complete.")
+            try:
+                st.session_state["sprinter_heat_map"] = build_sprinter_heat_map(
+                    loads,
+                    market_limit,
+                    radius_miles,
+                    include_industrial_density,
+                    industrial_market_limit,
+                    update_progress,
+                )
+                status.write("Heat map complete.")
+            except Exception as error:
+                status.empty()
+                st.error("The heat map could not be generated.")
+                st.exception(error)
+                return
 
     heat_map = st.session_state.get("sprinter_heat_map")
     if isinstance(heat_map, pd.DataFrame) and not heat_map.empty:
@@ -92,6 +99,7 @@ def _render_outbound_score(heat_map: object) -> None:
         st.info("Click Build / Refresh Heat Map above to score your top origin markets.")
         return
 
+    heat_map = _normalize_heat_map_display_columns(heat_map)
     mapped = heat_map.dropna(subset=["lat", "lon"]).copy()
     if not mapped.empty:
         st.map(mapped, latitude="lat", longitude="lon", size="map_size")
@@ -133,7 +141,21 @@ def _render_outbound_score(heat_map: object) -> None:
 def _render_knowledge_file_status() -> None:
     knowledge_files = st.session_state.get("knowledge_files", [])
     if knowledge_files:
-        st.caption(f"Knowledge files available for market context: {len(knowledge_files)}")
+        st.caption(
+            f"Knowledge files stored for reference: {len(knowledge_files)}. "
+            "Only files uploaded under Settings > Upload Pay Sheets add load history."
+        )
+
+
+def _normalize_heat_map_display_columns(heat_map: pd.DataFrame) -> pd.DataFrame:
+    normalized = heat_map.copy()
+    if "base_opportunity_score" not in normalized.columns:
+        normalized["base_opportunity_score"] = normalized.get("opportunity_score", 0)
+    if "market_intel_adjustment" not in normalized.columns:
+        normalized["market_intel_adjustment"] = 0.0
+    if "market_intel_notes" not in normalized.columns:
+        normalized["market_intel_notes"] = ""
+    return normalized
 
 
 def _render_hot_origins(loads: pd.DataFrame) -> None:
