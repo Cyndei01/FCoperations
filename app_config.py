@@ -178,11 +178,6 @@ PAGES = [
         "enabled": True,
     },
     {
-        "name": "Driver Performance",
-        "module": "feature_pages.driver_performance",
-        "enabled": True,
-    },
-    {
         "name": "Momentum GPS",
         "module": "feature_pages.momentum_gps",
         "enabled": False,
