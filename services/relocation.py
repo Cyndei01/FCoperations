@@ -235,7 +235,7 @@ def _recommendation(row: pd.Series, current_market: str, relocation_limit: int |
 
 def _reason(row: pd.Series) -> str:
     pieces = [
-        f"{int(row.get('loads') or 0)} historical loads",
+        f"{int(row.get('loads') or 0)} historical outbound loads",
         f"{int(row.get('industrial_points') or 0)} industrial/warehouse points",
         f"{int(row.get('automotive_points') or 0)} automotive/manufacturing points",
         f"${float(row.get('ppm') or 0):.2f}/mi",

@@ -117,7 +117,7 @@ def _render_outbound_score(heat_map: object) -> None:
     col1.metric("Best Market", best["market"])
     col1.caption(str(best.get("market_temperature", "")))
     col2.metric("Opportunity Score", f"{best['opportunity_score']:.1f}")
-    col3.metric("Historical Loads", f"{int(best['historical_loads']):,}")
+    col3.metric("Historical Outbound Loads", f"{int(best['historical_loads']):,}")
     col4.metric("Industrial Points", f"{int(best['industrial_points']):,}")
 
     display = heat_map.rename(columns=_heat_map_columns())
@@ -130,7 +130,7 @@ def _render_outbound_score(heat_map: object) -> None:
                 "Confidence",
                 "Base Score",
                 "Market Intel Adjustment",
-                "Historical Loads",
+                "Historical Outbound Loads",
                 "PPM",
                 "Avg Loaded Miles",
                 "Repeat Facilities",
@@ -193,7 +193,7 @@ def _render_hot_origins(loads: pd.DataFrame) -> None:
     summary = origin_market_summary(loads).rename(
         columns={
             "origin_market": "Origin Market",
-            "loads": "Historical Loads",
+            "loads": "Historical Outbound Loads",
             "average_pay": "Avg Pay",
             "total_pay": "Total Pay",
             "average_loaded_miles": "Avg Loaded Miles",
@@ -202,7 +202,7 @@ def _render_hot_origins(loads: pd.DataFrame) -> None:
         }
     )
     st.dataframe(summary.head(40), use_container_width=True, hide_index=True)
-    st.caption("Hot Origins are the markets where F&C has historically picked up the most sprinter/LTL loads.")
+    st.caption("Hot Origins are the markets where F&C has historically picked up outbound sprinter/LTL loads.")
 
 
 def _render_dead_zones(loads: pd.DataFrame) -> None:
@@ -315,7 +315,7 @@ def _render_market_intelligence() -> None:
 def _heat_map_columns() -> dict[str, str]:
     return {
         "market": "Market",
-        "historical_loads": "Historical Loads",
+        "historical_loads": "Historical Outbound Loads",
         "average_pay": "Avg Pay",
         "pay_per_mile": "PPM",
         "average_loaded_miles": "Avg Loaded Miles",

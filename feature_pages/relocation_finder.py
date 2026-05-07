@@ -84,7 +84,7 @@ def render() -> None:
         display = recommendations.rename(
             columns={
                 "origin_market": "Target Market",
-                "loads": "Historical Loads",
+                "loads": "Historical Outbound Loads",
                 "ppm": "PPM",
                 "heat_score": "Heat Score",
                 "confidence": "Confidence",
@@ -114,7 +114,7 @@ def render() -> None:
         columns = [
             "Option",
             "Target Market",
-            "Historical Loads",
+            "Historical Outbound Loads",
             "Industrial / Warehouse Points",
             "Knowledge Plant Points",
             "BGA ArcGIS Points",
@@ -216,13 +216,13 @@ def _render_relocation_signal_status(loads: pd.DataFrame, heat_map: pd.DataFrame
             .sum()
         )
         st.caption(
-            f"Ranking signals: distance first, {load_count:,} historical loads second, "
+            f"Ranking signals: distance first, {load_count:,} historical outbound pickup loads second, "
             f"industrial/automotive density from {density_markets:,} heat-map markets third "
             f"({density_points:,} density points), plus BGA ArcGIS points when public layers are available."
         )
     else:
         st.caption(
-            f"Ranking signals: distance first and {load_count:,} historical loads second. "
+            f"Ranking signals: distance first and {load_count:,} historical outbound pickup loads second. "
             "Industrial/automotive heat-map density is not active until the Sprinter Heat Map is built in this session. "
             "BGA ArcGIS points are checked during relocation ranking when public layers are available."
         )
@@ -254,17 +254,21 @@ def _asset_market(row: pd.Series) -> str:
 
 def _relocation_candidate_summary(loads: pd.DataFrame) -> pd.DataFrame:
     outbound = origin_market_summary(loads)
-    if outbound.empty or "destination_market" not in loads.columns:
+    if outbound.empty:
         return outbound
 
-    destination_markets = (
-        loads["destination_market"]
+    existing = set(outbound["origin_market"].astype(str))
+    knowledge_locations = load_manufacturing_locations(st)
+    if not isinstance(knowledge_locations, pd.DataFrame) or knowledge_locations.empty:
+        return outbound
+
+    knowledge_markets = (
+        knowledge_locations["market"]
         .dropna()
         .astype(str)
         .str.strip()
     )
-    destination_markets = destination_markets[destination_markets != ""].drop_duplicates()
-    existing = set(outbound["origin_market"].astype(str))
+    knowledge_markets = knowledge_markets[knowledge_markets != ""].drop_duplicates()
     additions = [
         {
             "origin_market": market,
@@ -273,9 +277,9 @@ def _relocation_candidate_summary(loads: pd.DataFrame) -> pd.DataFrame:
             "total_pay": 0.0,
             "average_loaded_miles": 0.0,
             "average_empty_miles": 0.0,
-            "priority": "Density candidate",
+            "priority": "Knowledge candidate",
         }
-        for market in destination_markets
+        for market in knowledge_markets
         if market not in existing
     ]
     if not additions:
