@@ -11,7 +11,7 @@ from services.mapbox import mapbox_ready, route_metrics as mapbox_route_metrics
 from services.market_distance import estimated_distance_detail
 
 
-RELOCATION_MODEL_VERSION = "distance-history-density-knowledge-arcgis-v11"
+RELOCATION_MODEL_VERSION = "distance-history-density-knowledge-arcgis-v12"
 
 
 def build_relocation_recommendations(
@@ -36,7 +36,6 @@ def build_relocation_recommendations(
     )
     targets = targets.head(min(max(target_count * 20, 150), 250)).copy()
     targets = add_manufacturing_location_density(targets, load_manufacturing_locations())
-    targets = add_arcgis_density(targets)
 
     targets = _add_estimated_distance_metrics(current_market, targets)
 
@@ -51,7 +50,16 @@ def build_relocation_recommendations(
     )
     targets["reason"] = targets.apply(_reason, axis=1)
 
-    selected = _select_three_options(targets, target_count)
+    shortlisted = _shortlist_for_external_density(targets, target_count)
+    shortlisted = add_arcgis_density(shortlisted, market_limit=min(max(target_count, 3), 12))
+    shortlisted = _add_relocation_scores(shortlisted, relocation_limit)
+    shortlisted["recommendation"] = shortlisted.apply(
+        lambda row: _recommendation(row, current_market, relocation_limit),
+        axis=1,
+    )
+    shortlisted["reason"] = shortlisted.apply(_reason, axis=1)
+
+    selected = _select_three_options(shortlisted, target_count)
     return _add_live_advisories(current_market, selected, use_live_distance)
 
 
@@ -298,6 +306,20 @@ def _select_three_options(targets: pd.DataFrame, target_count: int) -> pd.DataFr
         ascending=[False, False, False],
     )
     return pd.concat([selected, fallback]).head(min(3, target_count))
+
+
+def _shortlist_for_external_density(targets: pd.DataFrame, target_count: int) -> pd.DataFrame:
+    ranked = targets.copy()
+    if "distance_miles" in ranked.columns:
+        with_distance = ranked[ranked["distance_miles"].notna()].copy()
+        if not with_distance.empty:
+            ranked = with_distance
+    shortlist_size = min(max(target_count, 12), 25)
+    return ranked.sort_values(
+        ["relocation_score", "distance_miles", "loads", "industrial_points"],
+        ascending=[False, True, False, False],
+        na_position="last",
+    ).head(shortlist_size).copy()
 
 
 def _within_limit(distance: object, relocation_limit: int | None) -> bool | None:

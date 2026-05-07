@@ -38,8 +38,8 @@ ARCGIS_MARKET_DENSITY = {
     "portal_url": "https://bgafoundation.maps.arcgis.com",
     "dashboard_item_id": "90b75ed13442482b82b240d5f206fbdb",
     "radius_miles": 50,
-    "market_limit": 75,
-    "max_layers": 10,
+    "market_limit": 12,
+    "max_layers": 3,
 }
 
 MOMENTUM = {

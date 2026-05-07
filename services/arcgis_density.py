@@ -11,7 +11,7 @@ from app_config import ARCGIS_MARKET_DENSITY, LIVE_DATA
 from services.live_sources import geocode_market
 
 
-REQUEST_TIMEOUT_SECONDS = 18
+REQUEST_TIMEOUT_SECONDS = 6
 LAYER_URL_PATTERN = re.compile(r"https?://[^\"'\s]+/(?:FeatureServer|MapServer)(?:/\d+)?", re.IGNORECASE)
 
 
@@ -19,12 +19,12 @@ def arcgis_density_enabled() -> bool:
     return bool(ARCGIS_MARKET_DENSITY.get("enabled"))
 
 
-def add_arcgis_density(targets: pd.DataFrame) -> pd.DataFrame:
+def add_arcgis_density(targets: pd.DataFrame, market_limit: int | None = None) -> pd.DataFrame:
     if targets.empty or not arcgis_density_enabled():
         return targets
 
     enriched = targets.copy()
-    market_limit = int(ARCGIS_MARKET_DENSITY.get("market_limit", 75))
+    market_limit = market_limit or int(ARCGIS_MARKET_DENSITY.get("market_limit", 75))
     radius_miles = int(ARCGIS_MARKET_DENSITY.get("radius_miles", 50))
     markets = enriched["origin_market"].head(market_limit).astype(str).tolist()
     density_by_market = {
@@ -42,10 +42,16 @@ def add_arcgis_density(targets: pd.DataFrame) -> pd.DataFrame:
         enriched["external_industrial_points"], errors="coerce"
     ).fillna(0)
     enriched["industrial_points"] = (
-        pd.to_numeric(enriched.get("industrial_points", 0), errors="coerce").fillna(0)
+        _numeric_column(enriched, "industrial_points")
         + enriched["external_industrial_points"]
     )
     return enriched
+
+
+def _numeric_column(df: pd.DataFrame, column: str) -> pd.Series:
+    if column not in df.columns:
+        return pd.Series(0, index=df.index, dtype=float)
+    return pd.to_numeric(df[column], errors="coerce").fillna(0)
 
 
 @st.cache_data(ttl=60 * 60 * 24 * 7, show_spinner=False)
