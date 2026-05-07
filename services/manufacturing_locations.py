@@ -77,14 +77,20 @@ def add_manufacturing_location_density(targets: pd.DataFrame, locations: pd.Data
         lambda market: int(market_counts.get(_normalize_market(str(market)), 0))
     )
     enriched["industrial_points"] = (
-        pd.to_numeric(enriched.get("industrial_points", 0), errors="coerce").fillna(0)
+        _numeric_column(enriched, "industrial_points")
         + enriched["knowledge_manufacturing_points"]
     )
     enriched["automotive_points"] = (
-        pd.to_numeric(enriched.get("automotive_points", 0), errors="coerce").fillna(0)
+        _numeric_column(enriched, "automotive_points")
         + enriched["knowledge_manufacturing_points"]
     )
     return enriched
+
+
+def _numeric_column(df: pd.DataFrame, column: str) -> pd.Series:
+    if column not in df.columns:
+        return pd.Series(0, index=df.index, dtype=float)
+    return pd.to_numeric(df[column], errors="coerce").fillna(0)
 
 
 def _normalize_locations(raw: pd.DataFrame) -> pd.DataFrame:

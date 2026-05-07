@@ -4,6 +4,7 @@ import streamlit as st
 from app_config import LIVE_DATA, MARKET_INTELLIGENCE_SOURCES
 from services.live_sources import weather_table_for_markets
 from services.load_parser import dead_zone_summary, get_session_load_history, lane_summary, origin_market_summary
+from services.manufacturing_locations import load_manufacturing_locations
 from services.market_intelligence import (
     TREND_ADJUSTMENTS,
     apply_market_intelligence,
@@ -27,6 +28,12 @@ def render() -> None:
 
     st.caption(f"Load history source: {st.session_state.get('load_history_source', 'Current session')}. Parsed loads: {len(loads):,}.")
     _render_knowledge_file_status()
+    knowledge_locations = load_manufacturing_locations(st)
+    if not knowledge_locations.empty:
+        st.caption(
+            f"Knowledge density active: {len(knowledge_locations):,} plants/distribution centers "
+            f"across {knowledge_locations['market'].nunique():,} markets."
+        )
 
     col1, col2 = st.columns(2)
     market_limit = col1.slider("Markets to score", min_value=5, max_value=30, value=15)
@@ -56,6 +63,7 @@ def render() -> None:
                     radius_miles,
                     include_industrial_density,
                     industrial_market_limit,
+                    knowledge_locations,
                     update_progress,
                 )
                 status.write("Heat map complete.")
@@ -107,6 +115,7 @@ def _render_outbound_score(heat_map: object) -> None:
     best = heat_map.iloc[0]
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Best Market", best["market"])
+    col1.caption(str(best.get("market_temperature", "")))
     col2.metric("Opportunity Score", f"{best['opportunity_score']:.1f}")
     col3.metric("Historical Loads", f"{int(best['historical_loads']):,}")
     col4.metric("Industrial Points", f"{int(best['industrial_points']):,}")
@@ -117,6 +126,7 @@ def _render_outbound_score(heat_map: object) -> None:
             [
                 "Market",
                 "Opportunity Score",
+                "Market Temperature",
                 "Confidence",
                 "Base Score",
                 "Market Intel Adjustment",
@@ -124,8 +134,10 @@ def _render_outbound_score(heat_map: object) -> None:
                 "PPM",
                 "Avg Loaded Miles",
                 "Repeat Facilities",
+                "Knowledge Plant/DC Points",
                 "Industrial / Warehouse Points",
                 "Auto / Distribution Matches",
+                "Density Source",
                 "Market Intel Notes",
             ]
         ],
@@ -134,7 +146,7 @@ def _render_outbound_score(heat_map: object) -> None:
     )
 
     st.caption(
-        "Score uses F&C pickup frequency, average pay, repeat pickup facilities, market intelligence, and free OpenStreetMap industrial/warehouse/automotive density."
+        "Score uses F&C pickup frequency, average pay, repeat pickup facilities, parsed knowledge-file plant/DC locations, market intelligence, and optional free OpenStreetMap industrial/warehouse/automotive density."
     )
 
 
@@ -143,7 +155,7 @@ def _render_knowledge_file_status() -> None:
     if knowledge_files:
         st.caption(
             f"Knowledge files stored for reference: {len(knowledge_files)}. "
-            "Only files uploaded under Settings > Upload Pay Sheets add load history."
+            "Manufacturing/distribution files with city/state details add density; pay sheets add load history."
         )
 
 
@@ -155,7 +167,26 @@ def _normalize_heat_map_display_columns(heat_map: pd.DataFrame) -> pd.DataFrame:
         normalized["market_intel_adjustment"] = 0.0
     if "market_intel_notes" not in normalized.columns:
         normalized["market_intel_notes"] = ""
+    if "knowledge_manufacturing_points" not in normalized.columns:
+        normalized["knowledge_manufacturing_points"] = 0
+    if "market_temperature" not in normalized.columns:
+        normalized["market_temperature"] = normalized.get("opportunity_score", 0).apply(_temperature_label)
+    if "density_source" not in normalized.columns:
+        normalized["density_source"] = "History only"
     return normalized
+
+
+def _temperature_label(score: object) -> str:
+    if pd.isna(score):
+        return "Cold"
+    score_value = float(score or 0)
+    if score_value >= 70:
+        return "Hot"
+    if score_value >= 45:
+        return "Warm"
+    if score_value >= 20:
+        return "Watch"
+    return "Cold"
 
 
 def _render_hot_origins(loads: pd.DataFrame) -> None:
@@ -290,9 +321,11 @@ def _heat_map_columns() -> dict[str, str]:
         "average_loaded_miles": "Avg Loaded Miles",
         "average_empty_miles": "Avg Empty Miles",
         "repeat_facilities": "Repeat Facilities",
+        "knowledge_manufacturing_points": "Knowledge Plant/DC Points",
         "industrial_points": "Industrial / Warehouse Points",
         "automotive_points": "Auto / Distribution Matches",
         "opportunity_score": "Opportunity Score",
+        "market_temperature": "Market Temperature",
         "base_opportunity_score": "Base Score",
         "market_intel_adjustment": "Market Intel Adjustment",
         "market_intel_notes": "Market Intel Notes",

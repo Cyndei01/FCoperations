@@ -11,6 +11,7 @@ import streamlit as st
 from app_config import LIVE_DATA
 from services.live_sources import geocode_market
 from services.load_parser import origin_market_summary
+from services.manufacturing_locations import add_manufacturing_location_density
 
 
 AUTOMOTIVE_KEYWORDS = re.compile(
@@ -26,14 +27,16 @@ def build_sprinter_heat_map(
     radius_miles: int,
     include_industrial_density: bool,
     industrial_market_limit: int,
+    knowledge_locations: pd.DataFrame | None = None,
     progress_callback=None,
 ) -> pd.DataFrame:
     if loads.empty:
         return pd.DataFrame()
 
-    summary = origin_market_summary(loads).head(market_limit).copy()
+    summary = _candidate_market_summary(loads, knowledge_locations, market_limit)
     max_loads = max(float(summary["loads"].max()), 1.0)
     max_pay = max(float(summary["average_pay"].max()), 1.0)
+    max_knowledge_points = max(float(summary.get("knowledge_manufacturing_points", pd.Series([0])).max() or 0), 1.0)
 
     rows: list[dict[str, Any]] = []
     for position, (_, market_row) in enumerate(summary.iterrows(), start=1):
@@ -46,14 +49,18 @@ def build_sprinter_heat_map(
             density = industrial_density_for_market(market, radius_miles)
         else:
             density = _empty_density(market)
+        knowledge_points = int(market_row.get("knowledge_manufacturing_points") or 0)
+        density["industrial_points"] += knowledge_points
+        density["automotive_points"] += knowledge_points
         repeat_facilities = _repeat_facility_count(loads, market)
 
         history_score = float(market_row["loads"]) / max_loads * 45
         pay_score = float(market_row["average_pay"]) / max_pay * 15
-        density_score = min(density["industrial_points"], 80) / 80 * 25
-        automotive_score = min(density["automotive_points"], 25) / 25 * 10
+        density_score = min(density["industrial_points"], 80) / 80 * 20
+        automotive_score = min(density["automotive_points"], 25) / 25 * 8
+        knowledge_score = min(knowledge_points / max_knowledge_points * 17, 17)
         repeat_facility_score = min(repeat_facilities, 10) / 10 * 5
-        opportunity_score = history_score + pay_score + density_score + automotive_score + repeat_facility_score
+        opportunity_score = history_score + pay_score + density_score + automotive_score + knowledge_score + repeat_facility_score
 
         rows.append(
             {
@@ -66,11 +73,13 @@ def build_sprinter_heat_map(
                 "pay_per_mile": _pay_per_mile(market_row),
                 "average_empty_miles": float(market_row["average_empty_miles"]),
                 "repeat_facilities": repeat_facilities,
+                "knowledge_manufacturing_points": knowledge_points,
                 "industrial_points": density["industrial_points"],
                 "automotive_points": density["automotive_points"],
                 "opportunity_score": round(opportunity_score, 1),
+                "market_temperature": _market_temperature(opportunity_score),
                 "confidence": _confidence_label(location, density),
-                "density_source": _density_source_label(include_industrial_density, position, industrial_market_limit, density),
+                "density_source": _density_source_label(include_industrial_density, position, industrial_market_limit, density, knowledge_points),
                 "map_size": max(round(opportunity_score * 350), 800),
             }
         )
@@ -80,7 +89,54 @@ def build_sprinter_heat_map(
     if heat_map.empty:
         return heat_map
 
-    return heat_map.sort_values("opportunity_score", ascending=False)
+    return heat_map.sort_values("opportunity_score", ascending=False).head(market_limit)
+
+
+def _candidate_market_summary(loads: pd.DataFrame, knowledge_locations: pd.DataFrame | None, market_limit: int) -> pd.DataFrame:
+    summary = origin_market_summary(loads)
+    summary = add_manufacturing_location_density(summary, knowledge_locations)
+    if not isinstance(knowledge_locations, pd.DataFrame) or knowledge_locations.empty:
+        return summary.head(market_limit).copy()
+
+    existing = set(summary["origin_market"].astype(str))
+    knowledge_counts = (
+        knowledge_locations["market"]
+        .dropna()
+        .astype(str)
+        .str.strip()
+        .value_counts()
+    )
+    additions = [
+        {
+            "origin_market": market,
+            "loads": 0,
+            "average_pay": 0.0,
+            "total_pay": 0.0,
+            "average_loaded_miles": 0.0,
+            "average_empty_miles": 0.0,
+            "priority": "Knowledge market",
+            "knowledge_manufacturing_points": int(count),
+            "industrial_points": int(count),
+            "automotive_points": int(count),
+        }
+        for market, count in knowledge_counts.items()
+        if market not in existing
+    ]
+    if additions:
+        summary = pd.concat([summary, pd.DataFrame(additions)], ignore_index=True, sort=False)
+
+    for column in ["knowledge_manufacturing_points", "industrial_points", "automotive_points"]:
+        if column not in summary.columns:
+            summary[column] = 0
+        summary[column] = pd.to_numeric(summary[column], errors="coerce").fillna(0)
+
+    summary["candidate_score"] = (
+        summary["loads"].rank(method="dense", ascending=False)
+        + summary["knowledge_manufacturing_points"].rank(method="dense", ascending=False)
+    )
+    historical = summary.sort_values(["loads", "knowledge_manufacturing_points"], ascending=False).head(market_limit)
+    knowledge = summary.sort_values(["knowledge_manufacturing_points", "loads"], ascending=False).head(market_limit)
+    return pd.concat([historical, knowledge]).drop_duplicates(subset=["origin_market"]).copy()
 
 
 @st.cache_data(ttl=60 * 60 * 24 * 7, show_spinner=False)
@@ -161,14 +217,20 @@ def _density_source_label(
     position: int,
     industrial_market_limit: int,
     density: dict[str, Any],
+    knowledge_points: int,
 ) -> str:
+    sources = []
+    if knowledge_points:
+        sources.append("Knowledge files")
     if not include_industrial_density:
-        return "History only"
+        return ", ".join(sources) if sources else "History only"
     if position > industrial_market_limit:
-        return "Skipped for speed"
-    if not density["source_available"]:
-        return "Public source unavailable"
-    return "OpenStreetMap"
+        sources.append("OSM skipped")
+    elif not density["source_available"]:
+        sources.append("OSM unavailable")
+    else:
+        sources.append("OpenStreetMap")
+    return ", ".join(sources)
 
 
 def _empty_density(market: str, source_available: bool = True) -> dict[str, Any]:
@@ -178,3 +240,13 @@ def _empty_density(market: str, source_available: bool = True) -> dict[str, Any]
         "automotive_points": 0,
         "source_available": source_available,
     }
+
+
+def _market_temperature(score: float) -> str:
+    if score >= 70:
+        return "Hot"
+    if score >= 45:
+        return "Warm"
+    if score >= 20:
+        return "Watch"
+    return "Cold"
