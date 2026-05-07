@@ -3,13 +3,14 @@ from __future__ import annotations
 import pandas as pd
 import requests
 
+from services.arcgis_density import add_arcgis_density
 from services.google_maps import google_maps_ready, route_metrics
 from services.live_sources import weather_for_market
 from services.mapbox import mapbox_ready, route_metrics as mapbox_route_metrics
 from services.market_distance import estimated_distance_detail
 
 
-RELOCATION_MODEL_VERSION = "distance-history-density-traffic-weather-v9"
+RELOCATION_MODEL_VERSION = "distance-history-density-traffic-weather-arcgis-v10"
 
 
 def build_relocation_recommendations(
@@ -33,6 +34,7 @@ def build_relocation_recommendations(
         na_position="last",
     )
     targets = targets.head(min(max(target_count * 20, 150), 250)).copy()
+    targets = add_arcgis_density(targets)
 
     targets = _add_estimated_distance_metrics(current_market, targets)
 

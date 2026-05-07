@@ -88,6 +88,8 @@ def render() -> None:
                 "heat_score": "Heat Score",
                 "confidence": "Confidence",
                 "industrial_points": "Industrial / Warehouse Points",
+                "external_industrial_points": "BGA ArcGIS Points",
+                "external_density_source": "BGA Source",
                 "automotive_points": "Automotive / Manufacturing Points",
                 "distance_miles": "Distance Miles",
                 "drive_minutes": "Drive Minutes",
@@ -112,6 +114,8 @@ def render() -> None:
             "Target Market",
             "Historical Loads",
             "Industrial / Warehouse Points",
+            "BGA ArcGIS Points",
+            "BGA Source",
             "Automotive / Manufacturing Points",
             "PPM",
             "Distance Miles",
@@ -128,6 +132,7 @@ def render() -> None:
             "Recommendation",
             "Reason",
         ]
+        columns = [column for column in columns if column in display.columns]
         st.dataframe(
             display[columns],
             use_container_width=True,
@@ -204,12 +209,13 @@ def _render_relocation_signal_status(loads: pd.DataFrame, heat_map: pd.DataFrame
         st.caption(
             f"Ranking signals: distance first, {load_count:,} historical loads second, "
             f"industrial/automotive density from {density_markets:,} heat-map markets third "
-            f"({density_points:,} density points)."
+            f"({density_points:,} density points), plus BGA ArcGIS points when public layers are available."
         )
     else:
         st.caption(
             f"Ranking signals: distance first and {load_count:,} historical loads second. "
-            "Industrial/automotive density is not active until the Sprinter Heat Map is built in this session."
+            "Industrial/automotive heat-map density is not active until the Sprinter Heat Map is built in this session. "
+            "BGA ArcGIS points are checked during relocation ranking when public layers are available."
         )
 
 

@@ -32,6 +32,16 @@ LIVE_DATA = {
     "nws_api_url": "https://api.weather.gov",
 }
 
+ARCGIS_MARKET_DENSITY = {
+    "enabled": True,
+    "dashboard_url": "https://bgafoundation.maps.arcgis.com/apps/dashboards/90b75ed13442482b82b240d5f206fbdb",
+    "portal_url": "https://bgafoundation.maps.arcgis.com",
+    "dashboard_item_id": "90b75ed13442482b82b240d5f206fbdb",
+    "radius_miles": 50,
+    "market_limit": 75,
+    "max_layers": 10,
+}
+
 MOMENTUM = {
     "base_url_env": "MOMENTUM_API_BASE_URL",
     "tenant_id_env": "MOMENTUM_TENANT_ID",
