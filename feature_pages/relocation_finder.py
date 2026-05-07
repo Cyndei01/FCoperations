@@ -5,6 +5,7 @@ from app_config import OWNER_SETTINGS
 from services.google_maps import google_maps_ready
 from services.mapbox import mapbox_ready
 from services.load_parser import get_session_load_history, origin_market_summary
+from services.manufacturing_locations import load_manufacturing_locations
 from services.momentum import momentum_driver_location_options, momentum_ready
 from services.relocation import RELOCATION_MODEL_VERSION, build_relocation_recommendations
 from styles import page_header
@@ -88,6 +89,7 @@ def render() -> None:
                 "heat_score": "Heat Score",
                 "confidence": "Confidence",
                 "industrial_points": "Industrial / Warehouse Points",
+                "knowledge_manufacturing_points": "Knowledge Plant Points",
                 "external_industrial_points": "BGA ArcGIS Points",
                 "external_density_source": "BGA Source",
                 "automotive_points": "Automotive / Manufacturing Points",
@@ -114,6 +116,7 @@ def render() -> None:
             "Target Market",
             "Historical Loads",
             "Industrial / Warehouse Points",
+            "Knowledge Plant Points",
             "BGA ArcGIS Points",
             "BGA Source",
             "Automotive / Manufacturing Points",
@@ -195,6 +198,12 @@ def _render_knowledge_file_status() -> None:
     knowledge_files = st.session_state.get("knowledge_files", [])
     if knowledge_files:
         st.caption(f"Knowledge files available for relocation context: {len(knowledge_files)}")
+    manufacturing_locations = load_manufacturing_locations(st)
+    if not manufacturing_locations.empty:
+        st.caption(
+            f"Parsed manufacturing location list active: {len(manufacturing_locations):,} facilities "
+            f"across {manufacturing_locations['market'].nunique():,} markets."
+        )
 
 
 def _render_relocation_signal_status(loads: pd.DataFrame, heat_map: pd.DataFrame | None) -> None:

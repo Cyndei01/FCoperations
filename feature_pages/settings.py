@@ -1,9 +1,15 @@
 import os
 
+import pandas as pd
 import streamlit as st
 
 from app_config import OWNER_SETTINGS, PAGES
 from feature_pages.upload_pay_sheets import render_upload_manager
+from services.manufacturing_locations import (
+    load_manufacturing_locations,
+    parse_manufacturing_locations,
+    save_manufacturing_locations,
+)
 from services.supabase import download_knowledge_manifest, supabase_ready, upload_knowledge_file
 from styles import page_header
 
@@ -53,8 +59,12 @@ def _settings_password() -> str:
 
 def _render_knowledge_files() -> None:
     st.write("Upload reference files that should inform the Sprinter Heat Map and Relocation Finder.")
-    st.caption("Pay sheets should be uploaded in the Upload Pay Sheets tab. Knowledge files are stored as reference material only.")
+    st.caption(
+        "Pay sheets should be uploaded in the Upload Pay Sheets tab. "
+        "CSV/XLSX knowledge files with manufacturing plant city/state columns are parsed into relocation density."
+    )
     _load_saved_knowledge_manifest()
+    _load_saved_manufacturing_locations()
     if not supabase_ready():
         st.warning("Supabase is not configured, so knowledge files will disappear after refresh.")
 
@@ -81,9 +91,36 @@ def _render_knowledge_files() -> None:
                     st.caption(f"Saved {uploaded_file.name} to Supabase: {message}")
                 else:
                     st.warning(message)
+            parsed_locations = parse_manufacturing_locations(uploaded_file.name, content)
+            if not parsed_locations.empty:
+                existing_locations = st.session_state.get("manufacturing_locations")
+                if isinstance(existing_locations, pd.DataFrame) and not existing_locations.empty:
+                    parsed_locations = pd.concat(
+                        [existing_locations, parsed_locations],
+                        ignore_index=True,
+                    ).drop_duplicates()
+                st.session_state["manufacturing_locations"] = parsed_locations
+                if supabase_ready():
+                    ok, message = save_manufacturing_locations(parsed_locations)
+                    if ok:
+                        st.caption(f"Saved {len(parsed_locations):,} parsed manufacturing locations.")
+                    else:
+                        st.warning(message)
         saved_manifest = download_knowledge_manifest() if supabase_ready() else []
         st.session_state["knowledge_files"] = saved_manifest or stored
         st.success(f"Stored {len(stored)} knowledge file(s) for this session.")
+
+    manufacturing_locations = st.session_state.get("manufacturing_locations")
+    if isinstance(manufacturing_locations, pd.DataFrame) and not manufacturing_locations.empty:
+        st.subheader("Parsed Manufacturing Locations")
+        col1, col2 = st.columns(2)
+        col1.metric("Facilities Parsed", f"{len(manufacturing_locations):,}")
+        col2.metric("Markets", f"{manufacturing_locations['market'].nunique():,}")
+        st.dataframe(
+            manufacturing_locations.head(100),
+            use_container_width=True,
+            hide_index=True,
+        )
 
     knowledge_files = st.session_state.get("knowledge_files", [])
     if knowledge_files:
@@ -110,6 +147,14 @@ def _load_saved_knowledge_manifest() -> None:
     saved_files = download_knowledge_manifest()
     if saved_files:
         st.session_state["knowledge_files"] = saved_files
+
+
+def _load_saved_manufacturing_locations() -> None:
+    if isinstance(st.session_state.get("manufacturing_locations"), pd.DataFrame):
+        return
+    locations = load_manufacturing_locations(st)
+    if not locations.empty:
+        st.session_state["manufacturing_locations"] = locations
 
 
 def _secret(name: str) -> str:
