@@ -5,12 +5,12 @@ import requests
 
 from services.google_maps import google_maps_ready, route_metrics
 from services.live_sources import weather_for_market
-from services.manufacturing_locations import add_manufacturing_location_density, load_manufacturing_locations
+from services.manufacturing_locations import add_manufacturing_location_density
 from services.mapbox import mapbox_ready, route_metrics as mapbox_route_metrics
 from services.market_distance import estimated_distance_detail
 
 
-RELOCATION_MODEL_VERSION = "fast-distance-history-density-v13"
+RELOCATION_MODEL_VERSION = "fast-no-network-ranking-v14"
 
 
 def build_relocation_recommendations(
@@ -20,6 +20,7 @@ def build_relocation_recommendations(
     relocation_limit: int | None,
     target_count: int,
     use_live_distance: bool,
+    knowledge_locations: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     if origin_summary.empty:
         return pd.DataFrame()
@@ -34,7 +35,7 @@ def build_relocation_recommendations(
         na_position="last",
     )
     targets = targets.head(min(max(target_count * 20, 150), 250)).copy()
-    targets = add_manufacturing_location_density(targets, load_manufacturing_locations())
+    targets = add_manufacturing_location_density(targets, knowledge_locations)
 
     targets = _add_estimated_distance_metrics(current_market, targets)
 

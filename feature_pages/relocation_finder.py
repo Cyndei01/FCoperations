@@ -17,8 +17,9 @@ def render() -> None:
 
     loads = get_session_load_history(st)
     if not loads.empty:
-        _render_knowledge_file_status()
-        summary = _relocation_candidate_summary(loads)
+        knowledge_locations = _current_manufacturing_locations()
+        _render_knowledge_file_status(knowledge_locations)
+        summary = _relocation_candidate_summary(loads, knowledge_locations)
         market_options = summary["origin_market"].tolist()
         st.subheader("Relocation Search")
         selected_van, start_market, start_source = _driver_start_market_selector(market_options)
@@ -33,11 +34,8 @@ def render() -> None:
                 step=25,
             )
         target_count = 15
-        use_live_distance = st.checkbox(
-            "Add live traffic/weather advisories",
-            value=False,
-            help="Slower. Leave off for fast relocation ranking.",
-        )
+        use_live_distance = False
+        st.caption("Fast mode is on. Live traffic/weather is skipped while ranking so results return immediately.")
         current_context = {
             "van": selected_van,
             "start_market": start_market,
@@ -63,6 +61,7 @@ def render() -> None:
                     int(relocation_limit) if relocation_limit is not None else None,
                     target_count,
                     use_live_distance,
+                    knowledge_locations,
                 )
                 st.session_state["relocation_context"] = current_context
 
@@ -198,11 +197,10 @@ def _driver_start_market_selector(market_options: list[str]) -> tuple[str, str, 
     return manual_van, custom_market.strip() or manual_market, "Manual current location"
 
 
-def _render_knowledge_file_status() -> None:
+def _render_knowledge_file_status(manufacturing_locations: pd.DataFrame) -> None:
     knowledge_files = st.session_state.get("knowledge_files", [])
     if knowledge_files:
         st.caption(f"Knowledge files available for relocation context: {len(knowledge_files)}")
-    manufacturing_locations = load_manufacturing_locations(st)
     if not manufacturing_locations.empty:
         st.caption(
             f"Parsed manufacturing location list active: {len(manufacturing_locations):,} facilities "
@@ -256,13 +254,12 @@ def _asset_market(row: pd.Series) -> str:
     return ""
 
 
-def _relocation_candidate_summary(loads: pd.DataFrame) -> pd.DataFrame:
+def _relocation_candidate_summary(loads: pd.DataFrame, knowledge_locations: pd.DataFrame | None = None) -> pd.DataFrame:
     outbound = origin_market_summary(loads)
     if outbound.empty:
         return outbound
 
     existing = set(outbound["origin_market"].astype(str))
-    knowledge_locations = load_manufacturing_locations(st)
     if not isinstance(knowledge_locations, pd.DataFrame) or knowledge_locations.empty:
         return outbound
 
@@ -295,3 +292,13 @@ def _format_distance(distance: object) -> str:
     if pd.isna(distance):
         return "Unavailable"
     return f"{float(distance):.0f} mi"
+
+
+def _current_manufacturing_locations() -> pd.DataFrame:
+    locations = st.session_state.get("manufacturing_locations")
+    if isinstance(locations, pd.DataFrame):
+        return locations
+    locations = load_manufacturing_locations(st)
+    if isinstance(locations, pd.DataFrame):
+        return locations
+    return pd.DataFrame()
