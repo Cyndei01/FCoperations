@@ -33,7 +33,11 @@ def render() -> None:
                 step=25,
             )
         target_count = 15
-        use_live_distance = True
+        use_live_distance = st.checkbox(
+            "Add live traffic/weather advisories",
+            value=False,
+            help="Slower. Leave off for fast relocation ranking.",
+        )
         current_context = {
             "van": selected_van,
             "start_market": start_market,
@@ -149,7 +153,7 @@ def render() -> None:
             routing_provider = "estimated/free fallback distance"
         st.caption(
             "Selects three options using distance first, historical F&C load frequency second, and manufacturing/industrial density third. "
-            "Traffic and weather are checked only for the final three options so ranking stays fast. "
+            "Traffic and weather are skipped unless the live advisory checkbox is enabled. "
             f"Current distance provider: {routing_provider}."
         )
         return

@@ -3,7 +3,6 @@ from __future__ import annotations
 import pandas as pd
 import requests
 
-from services.arcgis_density import add_arcgis_density
 from services.google_maps import google_maps_ready, route_metrics
 from services.live_sources import weather_for_market
 from services.manufacturing_locations import add_manufacturing_location_density, load_manufacturing_locations
@@ -11,7 +10,7 @@ from services.mapbox import mapbox_ready, route_metrics as mapbox_route_metrics
 from services.market_distance import estimated_distance_detail
 
 
-RELOCATION_MODEL_VERSION = "distance-history-density-knowledge-arcgis-v12"
+RELOCATION_MODEL_VERSION = "fast-distance-history-density-v13"
 
 
 def build_relocation_recommendations(
@@ -50,16 +49,7 @@ def build_relocation_recommendations(
     )
     targets["reason"] = targets.apply(_reason, axis=1)
 
-    shortlisted = _shortlist_for_external_density(targets, target_count)
-    shortlisted = add_arcgis_density(shortlisted, market_limit=min(max(target_count, 3), 12))
-    shortlisted = _add_relocation_scores(shortlisted, relocation_limit)
-    shortlisted["recommendation"] = shortlisted.apply(
-        lambda row: _recommendation(row, current_market, relocation_limit),
-        axis=1,
-    )
-    shortlisted["reason"] = shortlisted.apply(_reason, axis=1)
-
-    selected = _select_three_options(shortlisted, target_count)
+    selected = _select_three_options(targets, target_count)
     return _add_live_advisories(current_market, selected, use_live_distance)
 
 
@@ -110,7 +100,7 @@ def _add_estimated_distance_metrics(current_market: str, targets: pd.DataFrame) 
     distances = []
     distance_sources = []
     for market in destination_markets:
-        distance, source = estimated_distance_detail(current_market, market)
+        distance, source = estimated_distance_detail(current_market, market, allow_geocode=False)
         distances.append(distance)
         distance_sources.append(source)
 
@@ -124,9 +114,15 @@ def _add_estimated_distance_metrics(current_market: str, targets: pd.DataFrame) 
 def _add_live_advisories(current_market: str, selected: pd.DataFrame, use_live_distance: bool) -> pd.DataFrame:
     enriched = selected.copy()
     destination_markets = enriched["origin_market"].tolist()
+    if not use_live_distance:
+        enriched["weather_risk"] = "Not checked"
+        enriched["weather_summary"] = "Skipped for fast ranking"
+        enriched["weather_details"] = ""
+        enriched["dispatch_note"] = "Fast ranking: review live conditions before dispatch"
+        return _dispatch_order(enriched)
+
     live_metrics: dict[str, dict] = {}
-    if use_live_distance:
-        live_metrics = _live_route_metrics(current_market, destination_markets)
+    live_metrics = _live_route_metrics(current_market, destination_markets)
 
     weather_rows = {market: _weather_advisory(market) for market in destination_markets}
 
@@ -306,20 +302,6 @@ def _select_three_options(targets: pd.DataFrame, target_count: int) -> pd.DataFr
         ascending=[False, False, False],
     )
     return pd.concat([selected, fallback]).head(min(3, target_count))
-
-
-def _shortlist_for_external_density(targets: pd.DataFrame, target_count: int) -> pd.DataFrame:
-    ranked = targets.copy()
-    if "distance_miles" in ranked.columns:
-        with_distance = ranked[ranked["distance_miles"].notna()].copy()
-        if not with_distance.empty:
-            ranked = with_distance
-    shortlist_size = min(max(target_count, 12), 25)
-    return ranked.sort_values(
-        ["relocation_score", "distance_miles", "loads", "industrial_points"],
-        ascending=[False, True, False, False],
-        na_position="last",
-    ).head(shortlist_size).copy()
 
 
 def _within_limit(distance: object, relocation_limit: int | None) -> bool | None:

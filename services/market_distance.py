@@ -146,14 +146,14 @@ STATE_CENTROIDS = {
 }
 
 
-def estimated_distance_miles(origin_market: str, target_market: str) -> float | None:
-    distance, _source = estimated_distance_detail(origin_market, target_market)
+def estimated_distance_miles(origin_market: str, target_market: str, allow_geocode: bool = True) -> float | None:
+    distance, _source = estimated_distance_detail(origin_market, target_market, allow_geocode)
     return distance
 
 
-def estimated_distance_detail(origin_market: str, target_market: str) -> tuple[float | None, str]:
-    origin, origin_source = _market_coordinate(origin_market)
-    target, target_source = _market_coordinate(target_market)
+def estimated_distance_detail(origin_market: str, target_market: str, allow_geocode: bool = True) -> tuple[float | None, str]:
+    origin, origin_source = _market_coordinate(origin_market, allow_geocode)
+    target, target_source = _market_coordinate(target_market, allow_geocode)
     if not origin or not target:
         return None, "Unavailable"
     source = "Estimated"
@@ -162,13 +162,21 @@ def estimated_distance_detail(origin_market: str, target_market: str) -> tuple[f
         source = "State estimate"
     elif "Geocoded" in sources:
         source = "Geocoded estimate"
-    return round(_haversine_miles(origin[0], origin[1], target[0], target[1]) * 1.18, 1), source
+    distance = round(_haversine_miles(origin[0], origin[1], target[0], target[1]) * 1.18, 1)
+    if distance == 0 and _normalize_market(origin_market) != _normalize_market(target_market):
+        distance = 75.0
+    return distance, source
 
 
-def _market_coordinate(market: str) -> tuple[tuple[float, float] | None, str]:
+def _market_coordinate(market: str, allow_geocode: bool) -> tuple[tuple[float, float] | None, str]:
     known = MARKET_COORDINATES.get(_normalize_market(market))
     if known:
         return known, "Estimated"
+    if not allow_geocode:
+        state_coordinate = STATE_CENTROIDS.get(_state_code(market))
+        if state_coordinate:
+            return state_coordinate, "State estimate"
+        return None, "Unavailable"
     try:
         geocoded = geocode_market(market)
     except requests.RequestException:
