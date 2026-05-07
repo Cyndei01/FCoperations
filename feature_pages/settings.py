@@ -61,7 +61,7 @@ def _render_knowledge_files() -> None:
     st.write("Upload reference files that should inform the Sprinter Heat Map and Relocation Finder.")
     st.caption(
         "Pay sheets should be uploaded in the Upload Pay Sheets tab. "
-        "CSV/XLSX knowledge files with manufacturing plant city/state columns are parsed into relocation density."
+        "CSV, Excel, and text-based PDF knowledge files with manufacturing plant city/state details are parsed into relocation density."
     )
     _load_saved_knowledge_manifest()
     _load_saved_manufacturing_locations()

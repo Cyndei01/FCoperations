@@ -6,12 +6,16 @@ from typing import Any
 
 import pandas as pd
 import streamlit as st
+from pypdf import PdfReader
 
 from services.supabase import download_file, upload_file
 
 
 MANUFACTURING_LOCATIONS_PATH = "knowledge-files/manufacturing-locations/latest.csv"
 STATE_PATTERN = re.compile(r"\b([A-Z]{2})\b")
+CITY_STATE_PATTERN = re.compile(
+    r"\b([A-Z][A-Za-z .'-]{2,}),\s*(AL|AR|AZ|CA|CO|CT|DE|FL|GA|IA|ID|IL|IN|KS|KY|LA|MA|MD|ME|MI|MN|MO|MS|MT|NC|ND|NE|NH|NJ|NM|NV|NY|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VA|VT|WA|WI|WV|WY)\b"
+)
 
 
 def parse_manufacturing_locations(file_name: str, content: bytes) -> pd.DataFrame:
@@ -20,6 +24,8 @@ def parse_manufacturing_locations(file_name: str, content: bytes) -> pd.DataFram
         raw = pd.read_csv(BytesIO(content))
     elif file_type == "xlsx":
         raw = pd.read_excel(BytesIO(content))
+    elif file_type == "pdf":
+        return _locations_from_pdf(file_name, content)
     else:
         return pd.DataFrame()
     return _normalize_locations(raw)
@@ -114,6 +120,34 @@ def _normalize_locations(raw: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows).drop_duplicates()
 
 
+def _locations_from_pdf(file_name: str, content: bytes) -> pd.DataFrame:
+    try:
+        reader = PdfReader(BytesIO(content))
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    except Exception:
+        return pd.DataFrame()
+
+    rows: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        line_text = " ".join(line.split())
+        for match in CITY_STATE_PATTERN.finditer(line_text):
+            city = _clean_city(match.group(1))
+            state = match.group(2).upper()
+            if not city:
+                continue
+            facility = line_text[: match.start()].strip(" ,-:") or file_name
+            rows.append(
+                {
+                    "facility": facility[:120],
+                    "city": city.title(),
+                    "state": state,
+                    "market": f"{city.title()}, {state}",
+                    "source": f"PDF knowledge file: {file_name}",
+                }
+            )
+    return pd.DataFrame(rows).drop_duplicates()
+
+
 def _find_column(df: pd.DataFrame, candidates: list[str]) -> str | None:
     normalized = {str(column).strip().lower(): column for column in df.columns}
     for candidate in candidates:
@@ -157,6 +191,16 @@ def _clean(value: Any) -> str:
     if value is None or pd.isna(value):
         return ""
     return str(value).strip()
+
+
+def _clean_city(value: Any) -> str:
+    text = _clean(value)
+    text = re.sub(r"^(in|near|at|from|to)\s+", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\b(address|location|plant|facility)\b.*$", "", text, flags=re.IGNORECASE).strip(" ,-:")
+    words = text.split()
+    if len(words) > 5:
+        text = " ".join(words[-4:])
+    return text.strip(" ,-:")
 
 
 def _normalize_market(market: str) -> str:
