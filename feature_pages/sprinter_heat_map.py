@@ -121,26 +121,26 @@ def _render_outbound_score(heat_map: object) -> None:
     col4.metric("Industrial Points", f"{int(best['industrial_points']):,}")
 
     display = heat_map.rename(columns=_heat_map_columns())
+    display_columns = [
+        "Market",
+        "Opportunity Score",
+        "Market Temperature",
+        "Confidence",
+        "Base Score",
+        "Market Intel Adjustment",
+        "Historical Outbound Loads",
+        "PPM",
+        "Avg Loaded Miles",
+        "Repeat Facilities",
+        "Knowledge Plant/DC Points",
+        "Industrial / Warehouse Points",
+        "Auto / Distribution Matches",
+        "Density Source",
+        "Market Intel Notes",
+    ]
+    display_columns = [column for column in display_columns if column in display.columns]
     st.dataframe(
-        display[
-            [
-                "Market",
-                "Opportunity Score",
-                "Market Temperature",
-                "Confidence",
-                "Base Score",
-                "Market Intel Adjustment",
-                "Historical Outbound Loads",
-                "PPM",
-                "Avg Loaded Miles",
-                "Repeat Facilities",
-                "Knowledge Plant/DC Points",
-                "Industrial / Warehouse Points",
-                "Auto / Distribution Matches",
-                "Density Source",
-                "Market Intel Notes",
-            ]
-        ],
+        display[display_columns],
         use_container_width=True,
         hide_index=True,
     )

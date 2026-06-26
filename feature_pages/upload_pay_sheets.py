@@ -102,7 +102,7 @@ def render_upload_manager() -> None:
                     load_col3.metric("Top Origin", summary.iloc[0]["origin_market"])
 
                     st.dataframe(loads.head(100), use_container_width=True, hide_index=True)
-                    st.caption("This parsed load history now powers Hot Markets and Relocation Finder for this session.")
+                    st.caption("This parsed outbound load history now powers the Sprinter Heat Map and Relocation Finder for this session.")
             except Exception as error:
                 st.error("The file uploaded, but the app could not preview it yet.")
                 st.exception(error)

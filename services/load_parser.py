@@ -10,6 +10,10 @@ CITY_STATE_PATTERN = re.compile(r"^[A-Z .'-]+,\s*[A-Z]{2}$")
 
 
 def parse_pay_sheet_loads(df: pd.DataFrame) -> pd.DataFrame:
+    standard_loads = _parse_standard_load_table(df)
+    if not standard_loads.empty:
+        return standard_loads
+
     rows: list[dict[str, Any]] = []
     clean_df = df.fillna("")
 
@@ -47,6 +51,112 @@ def parse_pay_sheet_loads(df: pd.DataFrame) -> pd.DataFrame:
         )
 
     return pd.DataFrame(rows)
+
+
+def _parse_standard_load_table(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return pd.DataFrame()
+
+    clean_df = df.dropna(how="all").copy()
+    clean_df.columns = [str(column).strip() for column in clean_df.columns]
+    origin_column = _find_column(
+        clean_df,
+        [
+            "origin_market",
+            "origin",
+            "pickup market",
+            "pickup",
+            "pickup city",
+            "pickup location",
+            "from market",
+            "from",
+            "outbound market",
+            "outbound location",
+        ],
+    )
+    destination_column = _find_column(
+        clean_df,
+        [
+            "destination_market",
+            "destination",
+            "delivery market",
+            "delivery",
+            "delivery city",
+            "delivery location",
+            "to market",
+            "to",
+        ],
+    )
+    if not origin_column:
+        return pd.DataFrame()
+
+    origin_city_column = _find_column(clean_df, ["origin city", "pickup city", "from city", "city"])
+    origin_state_column = _find_column(clean_df, ["origin state", "pickup state", "from state", "state"])
+    destination_city_column = _find_column(clean_df, ["destination city", "delivery city", "to city"])
+    destination_state_column = _find_column(clean_df, ["destination state", "delivery state", "to state"])
+    pay_column = _find_column(clean_df, ["pay", "rate", "revenue", "gross", "amount"])
+    loaded_miles_column = _find_column(clean_df, ["loaded_miles", "loaded miles", "loaded", "miles", "distance"])
+    empty_miles_column = _find_column(clean_df, ["empty_miles", "empty miles", "deadhead"])
+    order_column = _find_column(clean_df, ["order_number", "order #", "order", "load id", "load number"])
+    driver_column = _find_column(clean_df, ["driver", "vehicle", "van", "truck", "unit"])
+    origin_facility_column = _find_column(clean_df, ["origin facility", "pickup facility", "shipper", "from facility"])
+    destination_facility_column = _find_column(clean_df, ["destination facility", "delivery facility", "receiver", "consignee", "to facility"])
+
+    rows: list[dict[str, Any]] = []
+    for row_index, row in clean_df.iterrows():
+        origin = _market_from_row(row, origin_column, origin_city_column, origin_state_column)
+        destination = _market_from_row(row, destination_column, destination_city_column, destination_state_column)
+        if not _looks_like_market(origin):
+            continue
+        if not _looks_like_market(destination):
+            destination = ""
+        pay = _parse_money(row.get(pay_column, "")) if pay_column else 0.0
+        loaded_miles = _parse_miles(row.get(loaded_miles_column, "")) if loaded_miles_column else 0.0
+        rows.append(
+            {
+                "driver": _clean_text(row.get(driver_column, "")) if driver_column else "",
+                "truck": _clean_text(row.get(driver_column, "")) if driver_column else "",
+                "order_number": _clean_text(row.get(order_column, "")) if order_column else f"row-{row_index}",
+                "trip_number": "",
+                "origin_market": _normalize_market(origin),
+                "destination_market": _normalize_market(destination) if destination else "",
+                "origin_facility": _clean_text(row.get(origin_facility_column, "")) if origin_facility_column else "",
+                "destination_facility": _clean_text(row.get(destination_facility_column, "")) if destination_facility_column else "",
+                "loaded_miles": loaded_miles,
+                "empty_miles": _parse_miles(row.get(empty_miles_column, "")) if empty_miles_column else 0.0,
+                "trip_hours": 0.0,
+                "driving_hours": 0.0,
+                "pay": pay,
+                "status": "Imported history",
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _find_column(df: pd.DataFrame, candidates: list[str]) -> str | None:
+    normalized = {str(column).strip().lower(): column for column in df.columns}
+    for candidate in candidates:
+        if candidate in normalized:
+            return normalized[candidate]
+    for column in df.columns:
+        column_text = str(column).strip().lower()
+        if any(candidate in column_text for candidate in candidates):
+            return column
+    return None
+
+
+def _market_from_row(row: pd.Series, market_column: str | None, city_column: str | None, state_column: str | None) -> str:
+    if market_column:
+        value = _clean_text(row.get(market_column, ""))
+        if _looks_like_market(value):
+            return value
+    city = _clean_text(row.get(city_column, "")) if city_column else ""
+    state = _clean_text(row.get(state_column, "")) if state_column else ""
+    if city and state:
+        return f"{city}, {state}"
+    if market_column:
+        return _clean_text(row.get(market_column, ""))
+    return ""
 
 
 def origin_market_summary(loads: pd.DataFrame) -> pd.DataFrame:

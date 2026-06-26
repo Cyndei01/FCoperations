@@ -12,6 +12,7 @@ from app_config import LIVE_DATA
 from services.live_sources import geocode_market
 from services.load_parser import origin_market_summary
 from services.manufacturing_locations import add_manufacturing_location_density
+from services.market_distance import market_coordinate
 
 
 AUTOMOTIVE_KEYWORDS = re.compile(
@@ -44,7 +45,7 @@ def build_sprinter_heat_map(
         if progress_callback:
             progress_callback(position, len(summary), market)
 
-        location = _safe_geocode(market)
+        location = _fast_location(market)
         if include_industrial_density and location and position <= industrial_market_limit:
             density = industrial_density_for_market(market, radius_miles)
         else:
@@ -187,6 +188,14 @@ def _safe_geocode(market: str) -> dict[str, Any] | None:
         return geocode_market(market)
     except requests.RequestException:
         return None
+
+
+def _fast_location(market: str) -> dict[str, Any] | None:
+    coordinate = market_coordinate(market, allow_geocode=False)
+    if not coordinate:
+        return None
+    lat, lon = coordinate
+    return {"lat": lat, "lon": lon}
 
 
 def _repeat_facility_count(loads: pd.DataFrame, market: str) -> int:

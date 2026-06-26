@@ -151,6 +151,11 @@ def estimated_distance_miles(origin_market: str, target_market: str, allow_geoco
     return distance
 
 
+def market_coordinate(market: str, allow_geocode: bool = True) -> tuple[float, float] | None:
+    coordinate, _source = _market_coordinate(market, allow_geocode)
+    return coordinate
+
+
 def estimated_distance_detail(origin_market: str, target_market: str, allow_geocode: bool = True) -> tuple[float | None, str]:
     origin, origin_source = _market_coordinate(origin_market, allow_geocode)
     target, target_source = _market_coordinate(target_market, allow_geocode)
