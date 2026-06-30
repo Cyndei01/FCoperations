@@ -32,6 +32,79 @@ def parse_load_history_file(file_name: str, content: bytes) -> pd.DataFrame:
     ).reset_index(drop=True)
 
 
+def load_history_from_knowledge_files(st_module=None) -> pd.DataFrame:
+    try:
+        from services.supabase import (
+            download_file,
+            download_knowledge_manifest,
+            supabase_ready,
+            upload_parsed_load_history,
+        )
+    except Exception:
+        return pd.DataFrame()
+
+    if not supabase_ready():
+        return pd.DataFrame()
+
+    manifest = []
+    if st_module is not None:
+        session_manifest = st_module.session_state.get("knowledge_files")
+        if isinstance(session_manifest, list):
+            manifest = session_manifest
+    if not manifest:
+        manifest = download_knowledge_manifest()
+    if not manifest:
+        return pd.DataFrame()
+
+    parsed_tables = []
+    for item in manifest:
+        if not isinstance(item, dict):
+            continue
+        file_type = str(item.get("type", "")).lower()
+        if file_type not in {"csv", "xlsx"}:
+            continue
+        path = item.get("path")
+        if not path:
+            continue
+        ok, payload = download_file(path)
+        if not ok or not isinstance(payload, bytes):
+            continue
+        parsed_loads = parse_load_history_file(str(item.get("name", "knowledge file")), payload)
+        if not parsed_loads.empty:
+            parsed_tables.append(parsed_loads)
+
+    if not parsed_tables:
+        return pd.DataFrame()
+
+    loads = _dedupe_loads(pd.concat(parsed_tables, ignore_index=True))
+    upload_parsed_load_history(loads)
+    if st_module is not None:
+        st_module.session_state["knowledge_files"] = manifest
+        st_module.session_state["load_history"] = loads
+        st_module.session_state["load_history_source"] = "Knowledge files"
+    return loads
+
+
+def merge_load_history(existing_loads: pd.DataFrame, new_loads: pd.DataFrame) -> pd.DataFrame:
+    tables = []
+    if isinstance(existing_loads, pd.DataFrame) and not existing_loads.empty:
+        tables.append(existing_loads)
+    if isinstance(new_loads, pd.DataFrame) and not new_loads.empty:
+        tables.append(new_loads)
+    if not tables:
+        return pd.DataFrame()
+    return _dedupe_loads(pd.concat(tables, ignore_index=True))
+
+
+def _dedupe_loads(loads: pd.DataFrame) -> pd.DataFrame:
+    if loads.empty:
+        return loads
+    return loads.drop_duplicates(
+        subset=["order_number", "origin_market", "destination_market", "pay", "loaded_miles"],
+        keep="first",
+    ).reset_index(drop=True)
+
+
 def _read_excel_sheet(workbook: pd.ExcelFile, sheet_name: str) -> pd.DataFrame:
     raw = pd.read_excel(workbook, sheet_name=sheet_name, header=None)
     header_row_index = _find_header_row(raw)
@@ -318,6 +391,9 @@ def get_session_load_history(st_module) -> pd.DataFrame:
             st_module.session_state["load_history"] = saved_loads
             st_module.session_state["load_history_source"] = "Supabase saved load history"
             return saved_loads
+        knowledge_loads = load_history_from_knowledge_files(st_module)
+        if isinstance(knowledge_loads, pd.DataFrame) and not knowledge_loads.empty:
+            return knowledge_loads
     except Exception:
         return pd.DataFrame()
     return pd.DataFrame()

@@ -5,14 +5,13 @@ import streamlit as st
 
 from app_config import OWNER_SETTINGS, PAGES
 from feature_pages.upload_pay_sheets import render_upload_manager
-from services.load_parser import get_session_load_history, origin_market_summary, parse_load_history_file
+from services.load_parser import get_session_load_history, merge_load_history, origin_market_summary, parse_load_history_file
 from services.manufacturing_locations import (
     load_manufacturing_locations,
     parse_manufacturing_locations,
     save_manufacturing_locations,
 )
 from services.supabase import (
-    download_file,
     download_knowledge_manifest,
     supabase_ready,
     upload_knowledge_file,
@@ -72,7 +71,6 @@ def _render_knowledge_files() -> None:
     )
     _load_saved_knowledge_manifest()
     _load_saved_manufacturing_locations()
-    _load_saved_historical_knowledge_files()
     if not supabase_ready():
         st.warning("Supabase is not configured, so knowledge files will disappear after refresh.")
 
@@ -117,7 +115,7 @@ def _render_knowledge_files() -> None:
             parsed_loads = parse_load_history_file(uploaded_file.name, content)
             if not parsed_loads.empty:
                 existing_loads = get_session_load_history(st)
-                combined_loads = _merge_load_history(existing_loads, parsed_loads)
+                combined_loads = merge_load_history(existing_loads, parsed_loads)
                 st.session_state["load_history"] = combined_loads
                 st.session_state["load_history_source"] = "Knowledge files"
                 if supabase_ready():
@@ -185,53 +183,6 @@ def _load_saved_manufacturing_locations() -> None:
     locations = load_manufacturing_locations(st)
     if not locations.empty:
         st.session_state["manufacturing_locations"] = locations
-
-
-def _load_saved_historical_knowledge_files() -> None:
-    if not supabase_ready() or not get_session_load_history(st).empty:
-        return
-
-    knowledge_files = st.session_state.get("knowledge_files", [])
-    parsed_tables = []
-    for item in knowledge_files:
-        file_type = str(item.get("type", "")).lower()
-        if file_type not in {"csv", "xlsx"}:
-            continue
-        path = item.get("path")
-        if not path:
-            continue
-        ok, payload = download_file(path)
-        if not ok or not isinstance(payload, bytes):
-            continue
-        parsed_loads = parse_load_history_file(str(item.get("name", "knowledge file")), payload)
-        if not parsed_loads.empty:
-            parsed_tables.append(parsed_loads)
-
-    if not parsed_tables:
-        return
-
-    loads = _merge_load_history(pd.DataFrame(), pd.concat(parsed_tables, ignore_index=True))
-    st.session_state["load_history"] = loads
-    st.session_state["load_history_source"] = "Knowledge files"
-    upload_parsed_load_history(loads)
-
-
-def _merge_load_history(existing_loads: pd.DataFrame, new_loads: pd.DataFrame) -> pd.DataFrame:
-    tables = []
-    if isinstance(existing_loads, pd.DataFrame) and not existing_loads.empty:
-        tables.append(existing_loads)
-    if isinstance(new_loads, pd.DataFrame) and not new_loads.empty:
-        tables.append(new_loads)
-    if not tables:
-        return pd.DataFrame()
-    return (
-        pd.concat(tables, ignore_index=True)
-        .drop_duplicates(
-            subset=["order_number", "origin_market", "destination_market", "pay", "loaded_miles"],
-            keep="first",
-        )
-        .reset_index(drop=True)
-    )
 
 
 def _secret(name: str) -> str:
