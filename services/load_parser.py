@@ -1,12 +1,73 @@
 from __future__ import annotations
 
 import re
+from io import BytesIO
 from typing import Any
 
 import pandas as pd
 
 
 CITY_STATE_PATTERN = re.compile(r"^[A-Z .'-]+,\s*[A-Z]{2}$")
+
+
+def parse_load_history_file(file_name: str, content: bytes) -> pd.DataFrame:
+    file_type = file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
+    if file_type == "csv":
+        tables = [pd.read_csv(BytesIO(content))]
+    elif file_type == "xlsx":
+        workbook = pd.ExcelFile(BytesIO(content))
+        tables = [_read_excel_sheet(workbook, sheet_name) for sheet_name in workbook.sheet_names]
+    else:
+        return pd.DataFrame()
+
+    parsed_tables = [parse_pay_sheet_loads(table) for table in tables if isinstance(table, pd.DataFrame)]
+    parsed_tables = [table for table in parsed_tables if not table.empty]
+    if not parsed_tables:
+        return pd.DataFrame()
+
+    loads = pd.concat(parsed_tables, ignore_index=True)
+    return loads.drop_duplicates(
+        subset=["order_number", "origin_market", "destination_market", "pay", "loaded_miles"],
+        keep="first",
+    ).reset_index(drop=True)
+
+
+def _read_excel_sheet(workbook: pd.ExcelFile, sheet_name: str) -> pd.DataFrame:
+    raw = pd.read_excel(workbook, sheet_name=sheet_name, header=None)
+    header_row_index = _find_header_row(raw)
+    if header_row_index is None:
+        return pd.read_excel(workbook, sheet_name=sheet_name)
+
+    headers = raw.iloc[header_row_index].fillna("").astype(str).str.strip()
+    table = raw.iloc[header_row_index + 1 :].copy()
+    table.columns = headers
+    return table.dropna(how="all")
+
+
+def _find_header_row(df: pd.DataFrame) -> int | None:
+    expected_headers = {
+        "vehicle",
+        "stops",
+        "order #",
+        "from",
+        "to",
+        "loaded",
+        "trip time",
+        "pay",
+        "origin",
+        "origin market",
+        "outbound location",
+        "pickup location",
+        "destination",
+        "delivery location",
+        "loaded miles",
+        "rate",
+    }
+    for index, row in df.head(25).iterrows():
+        values = {str(value).strip().lower() for value in row.dropna()}
+        if len(values.intersection(expected_headers)) >= 3:
+            return int(index)
+    return None
 
 
 def parse_pay_sheet_loads(df: pd.DataFrame) -> pd.DataFrame:

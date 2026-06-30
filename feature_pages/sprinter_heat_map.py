@@ -23,7 +23,7 @@ def render() -> None:
 
     loads = get_session_load_history(st)
     if loads.empty:
-        st.info("Upload your Excel pay sheet history first. The heat map uses your actual pickup history as the strongest signal.")
+        st.info("Upload historical load data in Settings > Knowledge Files to build the heat map. Weekly pay-sheet uploads are optional.")
         return
 
     st.caption(f"Load history source: {st.session_state.get('load_history_source', 'Current session')}. Parsed loads: {len(loads):,}.")
@@ -155,7 +155,7 @@ def _render_knowledge_file_status() -> None:
     if knowledge_files:
         st.caption(
             f"Knowledge files stored for reference: {len(knowledge_files)}. "
-            "Manufacturing/distribution files with city/state details add density; pay sheets add load history."
+            "Historical spreadsheets add outbound load history; manufacturing/distribution files with city/state details add density."
         )
 
 

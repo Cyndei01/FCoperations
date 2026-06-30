@@ -34,7 +34,7 @@ def _find_header_row(df: pd.DataFrame) -> int | None:
 
 
 def render() -> None:
-    page_header("Upload Pay Sheets", "Import driver pay sheets for internal review and reporting.")
+    page_header("Optional Pay Sheets", "Import weekly pay sheets when you want to add newer load history.")
     render_upload_manager()
 
 
@@ -49,7 +49,7 @@ def render_upload_manager() -> None:
     else:
         st.warning("Supabase is not configured. Uploaded pay sheets will not persist after refresh.")
 
-    uploaded_file = st.file_uploader("Upload PDF, CSV, or Excel pay sheet", type=["pdf", "csv", "xlsx"])
+    uploaded_file = st.file_uploader("Optional weekly PDF, CSV, or Excel pay sheet", type=["pdf", "csv", "xlsx"])
     if uploaded_file:
         file_type = uploaded_file.name.rsplit(".", 1)[-1].lower()
         file_content = uploaded_file.getvalue()
@@ -107,8 +107,8 @@ def render_upload_manager() -> None:
                 st.error("The file uploaded, but the app could not preview it yet.")
                 st.exception(error)
     else:
-        st.write("Upload a pay sheet to begin.")
+        st.write("Historical knowledge files can power the heat map by themselves. Upload a weekly pay sheet here only when you want to add newer data.")
 
     st.markdown('<div class="fc-section"></div>', unsafe_allow_html=True)
     st.subheader("Expected Workflow")
-    st.write("Upload files, validate totals, review exceptions, then export payroll-ready summaries.")
+    st.write("Use Knowledge Files for the long-term historical baseline. Use this optional uploader for weekly additions or payroll review.")
