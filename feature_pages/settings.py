@@ -13,7 +13,9 @@ from services.manufacturing_locations import (
 )
 from services.supabase import (
     download_knowledge_manifest,
+    supabase_config_status,
     supabase_ready,
+    test_supabase_connection,
     upload_knowledge_file,
     upload_parsed_load_history,
 )
@@ -69,6 +71,7 @@ def _render_knowledge_files() -> None:
         "CSV or Excel historical load files are saved as the baseline outbound history. "
         "CSV, Excel, and text-based PDF files with manufacturing plant city/state details are also parsed into relocation density."
     )
+    _render_storage_status()
     _load_saved_knowledge_manifest()
     _load_saved_manufacturing_locations()
     if not supabase_ready():
@@ -167,6 +170,25 @@ def _render_knowledge_files() -> None:
         st.caption("These files are stored in the current app session and saved to Supabase when configured.")
     else:
         st.info("No knowledge files uploaded yet.")
+
+
+def _render_storage_status() -> None:
+    status = supabase_config_status()
+    if not status["configured"]:
+        st.warning("Supabase storage is not configured. Knowledge files will not remain after refresh.")
+        return
+
+    if not status["writable"]:
+        st.warning(
+            "Supabase is connected with a public/publishable key, but knowledge-file storage needs SUPABASE_SERVICE_ROLE_KEY."
+        )
+        return
+
+    ok, message = test_supabase_connection()
+    if ok:
+        st.caption(message)
+    else:
+        st.warning(message)
 
 
 def _load_saved_knowledge_manifest() -> None:

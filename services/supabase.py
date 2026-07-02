@@ -24,6 +24,7 @@ def supabase_config_status() -> dict[str, Any]:
         "service_role_key": bool(_service_role_key()),
         "anon_key": bool(_anon_key()),
         "bucket": _bucket_name(),
+        "writable": bool(_service_role_key()),
     }
 
 
@@ -65,6 +66,12 @@ KNOWLEDGE_MANIFEST_PATH = "knowledge-files/manifest.json"
 def upload_file(file_name: str, content: bytes, folder: str, object_path: str | None = None) -> tuple[bool, str]:
     if not supabase_ready():
         return False, "Supabase is not configured."
+    if not _service_role_key():
+        return (
+            False,
+            "Supabase is connected, but no SUPABASE_SERVICE_ROLE_KEY is configured. "
+            "Knowledge files need a writable service-role key to persist in private Storage.",
+        )
 
     bucket = _bucket_name()
     bucket_ready, bucket_message = _ensure_bucket(bucket)
@@ -232,7 +239,7 @@ def _api_key() -> str:
 
 
 def _url() -> str:
-    return _secret(SUPABASE["url_env"]).rstrip("/")
+    return _secret_any([SUPABASE["url_env"], "NEXT_PUBLIC_SUPABASE_URL"]).rstrip("/")
 
 
 def _service_role_key() -> str:
@@ -240,7 +247,14 @@ def _service_role_key() -> str:
 
 
 def _anon_key() -> str:
-    return _secret(SUPABASE["anon_key_env"])
+    return _secret_any(
+        [
+            SUPABASE["anon_key_env"],
+            "SUPABASE_PUBLISHABLE_KEY",
+            "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+            "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        ]
+    )
 
 
 def _bucket_name() -> str:
@@ -255,3 +269,11 @@ def _secret(name: str, default: str = "") -> str:
         return str(st.secrets.get(name, default))
     except Exception:
         return default
+
+
+def _secret_any(names: list[str], default: str = "") -> str:
+    for name in names:
+        value = _secret(name)
+        if value:
+            return value
+    return default

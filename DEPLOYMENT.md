@@ -28,6 +28,8 @@ SUPABASE_STORAGE_BUCKET = "fcoperations"
 WHATSAPP_EMBED_URL = "optional_working_iframe_source_url"
 ```
 
+Use the exact `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` names in Streamlit secrets. `NEXT_PUBLIC_SUPABASE_*` values are for frontend apps and do not give this Streamlit app writable private Storage access.
+
 ## Notes
 
 - Do not commit `.streamlit/secrets.toml`.
