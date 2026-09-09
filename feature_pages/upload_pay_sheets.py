@@ -1,7 +1,13 @@
 import pandas as pd
 import streamlit as st
 
-from services.load_parser import get_session_load_history, origin_market_summary, parse_pay_sheet_loads
+from services.load_parser import (
+    get_session_load_history,
+    mark_load_history_updated,
+    merge_load_history,
+    origin_market_summary,
+    parse_pay_sheet_loads,
+)
 from services.supabase import supabase_ready, upload_file, upload_parsed_load_history
 from styles import page_header
 
@@ -81,12 +87,13 @@ def render_upload_manager() -> None:
                 st.subheader("Upload Preview")
                 st.dataframe(df.head(100), use_container_width=True, hide_index=True)
 
-                loads = parse_pay_sheet_loads(df)
+                parsed_loads = parse_pay_sheet_loads(df)
+                loads = merge_load_history(current_loads, parsed_loads)
                 st.session_state["load_history"] = loads
-                st.session_state["load_history_source"] = uploaded_file.name
+                mark_load_history_updated(st, uploaded_file.name)
 
                 st.subheader("Parsed Load History")
-                if loads.empty:
+                if parsed_loads.empty:
                     st.warning("No structured load records were found yet. The raw upload preview is available above.")
                 else:
                     if supabase_ready():
@@ -102,7 +109,7 @@ def render_upload_manager() -> None:
                     load_col3.metric("Top Origin", summary.iloc[0]["origin_market"])
 
                     st.dataframe(loads.head(100), use_container_width=True, hide_index=True)
-                    st.caption("This parsed outbound load history now powers the Sprinter Heat Map and Relocation Finder for this session.")
+                    st.caption("This upload was merged into the saved outbound baseline used by Sprinter Heat Map and Relocation Finder.")
             except Exception as error:
                 st.error("The file uploaded, but the app could not preview it yet.")
                 st.exception(error)

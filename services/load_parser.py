@@ -96,6 +96,16 @@ def merge_load_history(existing_loads: pd.DataFrame, new_loads: pd.DataFrame) ->
     return _dedupe_loads(pd.concat(tables, ignore_index=True))
 
 
+def mark_load_history_updated(st_module, source: str) -> None:
+    current_version = int(st_module.session_state.get("load_history_version", 0) or 0)
+    st_module.session_state["load_history_version"] = current_version + 1
+    st_module.session_state["load_history_source"] = source
+    st_module.session_state.pop("sprinter_heat_map", None)
+    st_module.session_state.pop("sprinter_heat_map_context", None)
+    st_module.session_state.pop("relocation_recommendations", None)
+    st_module.session_state.pop("relocation_context", None)
+
+
 def _dedupe_loads(loads: pd.DataFrame) -> pd.DataFrame:
     if loads.empty:
         return loads

@@ -5,7 +5,13 @@ import streamlit as st
 
 from app_config import OWNER_SETTINGS, PAGES
 from feature_pages.upload_pay_sheets import render_upload_manager
-from services.load_parser import get_session_load_history, merge_load_history, origin_market_summary, parse_load_history_file
+from services.load_parser import (
+    get_session_load_history,
+    mark_load_history_updated,
+    merge_load_history,
+    origin_market_summary,
+    parse_load_history_file,
+)
 from services.manufacturing_locations import (
     load_manufacturing_locations,
     parse_manufacturing_locations,
@@ -120,7 +126,7 @@ def _render_knowledge_files() -> None:
                 existing_loads = get_session_load_history(st)
                 combined_loads = merge_load_history(existing_loads, parsed_loads)
                 st.session_state["load_history"] = combined_loads
-                st.session_state["load_history_source"] = "Knowledge files"
+                mark_load_history_updated(st, "Saved historical knowledge files")
                 if supabase_ready():
                     ok, message = upload_parsed_load_history(combined_loads)
                     if ok:
@@ -140,6 +146,10 @@ def _render_knowledge_files() -> None:
         col2.metric("Origin Markets", f"{current_loads['origin_market'].nunique():,}")
         col3.metric("Top Origin", summary.iloc[0]["origin_market"] if not summary.empty else "None")
         st.caption("This saved outbound history powers the Sprinter Heat Map and Relocation Finder. Weekly pay-sheet uploads are optional.")
+        if st.button("Rebuild heat map from saved history", use_container_width=True):
+            st.session_state.pop("sprinter_heat_map", None)
+            st.session_state.pop("sprinter_heat_map_context", None)
+            st.success("Saved history is ready. Open Sprinter Heat Map to rebuild with the latest baseline.")
 
     manufacturing_locations = st.session_state.get("manufacturing_locations")
     if isinstance(manufacturing_locations, pd.DataFrame) and not manufacturing_locations.empty:

@@ -47,7 +47,20 @@ def render() -> None:
     if include_industrial_density:
         industrial_market_limit = st.slider("Markets to enrich with public industrial data", min_value=1, max_value=8, value=3)
 
-    if st.button("Build / Refresh Heat Map", use_container_width=True):
+    build_context = {
+        "load_history_version": int(st.session_state.get("load_history_version", 0) or 0),
+        "loads": int(len(loads)),
+        "market_limit": int(market_limit),
+        "radius_miles": int(radius_miles),
+        "include_industrial_density": bool(include_industrial_density),
+        "industrial_market_limit": int(industrial_market_limit),
+        "knowledge_locations": int(len(knowledge_locations)) if isinstance(knowledge_locations, pd.DataFrame) else 0,
+    }
+    heat_map = st.session_state.get("sprinter_heat_map")
+    heat_map_context = st.session_state.get("sprinter_heat_map_context")
+    should_build = not isinstance(heat_map, pd.DataFrame) or heat_map.empty or heat_map_context != build_context
+
+    if should_build or st.button("Build / Refresh Heat Map", use_container_width=True):
         status = st.empty()
         progress = st.progress(0)
 
@@ -66,6 +79,7 @@ def render() -> None:
                     knowledge_locations,
                     update_progress,
                 )
+                st.session_state["sprinter_heat_map_context"] = build_context
                 status.write("Heat map complete.")
             except Exception as error:
                 status.empty()
@@ -135,7 +149,6 @@ def _render_outbound_score(heat_map: object) -> None:
         "Knowledge Plant/DC Points",
         "Industrial / Warehouse Points",
         "Auto / Distribution Matches",
-        "Density Source",
         "Market Intel Notes",
     ]
     display_columns = [column for column in display_columns if column in display.columns]
@@ -146,7 +159,7 @@ def _render_outbound_score(heat_map: object) -> None:
     )
 
     st.caption(
-        "Score uses F&C pickup frequency, average pay, repeat pickup facilities, parsed knowledge-file plant/DC locations, market intelligence, and optional free OpenStreetMap industrial/warehouse/automotive density."
+        "Score uses F&C outbound pickup frequency, pay per mile, repeat pickup facilities, parsed knowledge-file plant/DC locations, market intelligence, and optional free OpenStreetMap industrial/warehouse/automotive density."
     )
 
 
