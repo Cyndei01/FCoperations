@@ -70,7 +70,8 @@ WEB_PAGES = {
     },
     "Try Hours": {
         "url": "https://fleet-vision.com/ooindex.htm",
-        "note": "If Fleet Vision blocks embedding, use the open-site button.",
+        "note": "Open Fleet Vision in a separate tab to sign in to Try Hours.",
+        "open_external": True,
     },
     "Whatsapp": {
         "url": "https://web.whatsapp.com/",

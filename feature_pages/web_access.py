@@ -21,7 +21,15 @@ def render() -> None:
 
     col1, col2 = st.columns([3, 1])
     col1.caption(note or url)
-    col2.link_button("Open Site", url, use_container_width=True)
+    button_label = f"Open {page_name}" if config.get("open_external") else "Open Site"
+    col2.link_button(button_label, url, use_container_width=True)
+
+    if config.get("open_external"):
+        st.info(
+            f"{page_name} must open in a separate browser tab. "
+            "Use the button above, then sign in on the Fleet Vision page."
+        )
+        return
 
     if page_name == "Whatsapp":
         if url == "https://web.whatsapp.com/":
