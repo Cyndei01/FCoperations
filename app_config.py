@@ -68,6 +68,10 @@ WEB_PAGES = {
         "url": "https://www.fleet-vu.com",
         "note": "If Fleet-Vu blocks embedding, use the open-site button.",
     },
+    "Try Hours": {
+        "url": "https://fleet-vision.com/ooindex.htm",
+        "note": "If Fleet Vision blocks embedding, use the open-site button.",
+    },
     "Whatsapp": {
         "url": "https://web.whatsapp.com/",
         "note": "WhatsApp Web may require browser sign-in and may block embedding in some environments.",
@@ -149,6 +153,11 @@ PAGES = [
     },
     {
         "name": "Whatsapp",
+        "module": "feature_pages.web_access",
+        "enabled": True,
+    },
+    {
+        "name": "Try Hours",
         "module": "feature_pages.web_access",
         "enabled": True,
     },
