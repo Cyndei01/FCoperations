@@ -169,7 +169,7 @@ PAGES = [
     {
         "name": "Sprinter Heat Map",
         "module": "feature_pages.sprinter_heat_map",
-        "enabled": True,
+        "enabled": False,
     },
     {
         "name": "Hot Markets",
@@ -189,12 +189,12 @@ PAGES = [
     {
         "name": "Relocation Finder",
         "module": "feature_pages.relocation_finder",
-        "enabled": True,
+        "enabled": False,
     },
     {
         "name": "Weather Risk Map",
         "module": "feature_pages.weather_risk_map",
-        "enabled": True,
+        "enabled": False,
     },
     {
         "name": "Momentum GPS",
