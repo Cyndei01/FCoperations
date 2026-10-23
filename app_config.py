@@ -77,6 +77,11 @@ WEB_PAGES = {
         "url": "https://web.whatsapp.com/",
         "note": "WhatsApp Web may require browser sign-in and may block embedding in some environments.",
     },
+    "Momentum IoT": {
+        "url": "https://app.momentumiot.com/#/",
+        "note": "Momentum IoT opens in a separate tab so its authenticated dashboard can run normally.",
+        "open_external": True,
+    },
 }
 
 FREE_FREIGHT_SOURCES = [
@@ -154,6 +159,11 @@ PAGES = [
     },
     {
         "name": "Whatsapp",
+        "module": "feature_pages.web_access",
+        "enabled": True,
+    },
+    {
+        "name": "Momentum IoT",
         "module": "feature_pages.web_access",
         "enabled": True,
     },
