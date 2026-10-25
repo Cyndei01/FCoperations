@@ -8,12 +8,23 @@
     {
       "src": "index.html",
       "use": "@vercel/static"
+    },
+    {
+      "src": "dispatch.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "dispatch.js",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/momentum-assets",
       "dest": "/api/momentum-assets.js"
+    },
+    {
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
