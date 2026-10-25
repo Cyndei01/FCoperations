@@ -1,0 +1,82 @@
+:root {
+  --navy: #0b1f3a;
+  --navy-light: #14345c;
+  --yellow: #f3c400;
+  --white: #ffffff;
+  --grey: #f4f6f8;
+  --grey-dark: #6b7280;
+  --black: #111827;
+  --border: #d9dee5;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #f7f9fc 0%, var(--white) 250px);
+  color: var(--black);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+a { color: inherit; }
+
+.app-shell { min-height: 100vh; display: flex; }
+
+.sidebar {
+  width: 260px;
+  min-height: 100vh;
+  flex: 0 0 260px;
+  padding: 30px 22px 24px;
+  background: var(--navy);
+  border-right: 4px solid var(--yellow);
+  color: var(--white);
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-block { padding: 0 0 22px; border-bottom: 1px solid rgba(255,255,255,.16); }
+.brand-row { display: flex; align-items: center; gap: 12px; }
+.brand-mark { width: 44px; height: 44px; border-radius: 4px; display: grid; place-items: center; background: var(--yellow); color: var(--navy); font-weight: 900; }
+.brand-name { font-size: 17px; font-weight: 800; }
+.brand-subtitle { margin-top: 5px; color: rgba(255,255,255,.72); font-size: 12px; }
+
+.navigation { display: grid; gap: 8px; padding-top: 22px; }
+.nav-button { width: 100%; padding: 11px 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 6px; background: rgba(255,255,255,.06); color: var(--white); text-align: left; font-weight: 700; cursor: pointer; }
+.nav-button:hover, .nav-button.active { background: var(--navy-light); border-color: rgba(243,196,0,.65); }
+.nav-button.active { box-shadow: inset 4px 0 0 var(--yellow); }
+
+.sidebar-footer { display: grid; gap: 12px; margin-top: auto; padding-top: 30px; color: rgba(255,255,255,.68); font-size: 12px; }
+.sidebar-footer a { text-decoration: none; }
+.sidebar-footer a:hover { color: var(--white); }
+
+.main-content { width: 100%; max-width: 1440px; padding: 32px 42px 58px; }
+.page-header { padding: 22px 26px 24px; border-radius: 6px; background: var(--navy); border-bottom: 5px solid var(--yellow); color: var(--white); }
+.eyebrow { color: var(--yellow); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; }
+h1 { margin: 7px 0 7px; font-size: 32px; letter-spacing: 0; }
+.page-header p { margin: 0; color: rgba(255,255,255,.78); }
+.page-content { padding-top: 25px; }
+
+.tool-panel { background: var(--white); border: 1px solid var(--border); border-top: 4px solid var(--yellow); border-radius: 6px; padding: 22px; box-shadow: 0 8px 18px rgba(11,31,58,.06); }
+.tool-panel h2 { color: var(--navy); margin: 0 0 8px; font-size: 22px; }
+.tool-panel p { color: #4b5563; line-height: 1.55; }
+.tool-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.button { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 17px; border-radius: 6px; border: 1px solid var(--navy); background: var(--navy); color: var(--white); text-decoration: none; font-weight: 700; cursor: pointer; }
+.button:hover { background: var(--navy-light); }
+.button.secondary { background: var(--white); color: var(--navy); }
+.button.secondary:hover { background: var(--grey); }
+.notice { margin-top: 18px; padding: 14px 16px; border: 1px solid #e0c200; border-radius: 4px; background: #fff8d8; line-height: 1.5; }
+.embedded-frame { width: 100%; height: min(72vh, 760px); margin-top: 20px; border: 1px solid var(--border); border-radius: 6px; background: var(--grey); }
+.status-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.status-card { padding: 16px; background: var(--grey); border: 1px solid var(--border); border-radius: 6px; }
+.status-label { color: var(--grey-dark); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+.status-value { margin-top: 6px; color: var(--navy); font-weight: 800; }
+
+@media (max-width: 800px) {
+  .app-shell { display: block; }
+  .sidebar { width: 100%; min-height: auto; border-right: 0; border-bottom: 4px solid var(--yellow); padding: 18px; }
+  .navigation { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: 16px; }
+  .sidebar-footer { display: none; }
+  .main-content { padding: 20px 16px 40px; }
+  h1 { font-size: 27px; }
+  .status-grid { grid-template-columns: 1fr; }
+}
