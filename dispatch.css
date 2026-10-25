@@ -62,9 +62,17 @@ h1 { margin: 7px 0 7px; font-size: 32px; letter-spacing: 0; }
 .tool-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
 .button { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 17px; border-radius: 6px; border: 1px solid var(--navy); background: var(--navy); color: var(--white); text-decoration: none; font-weight: 700; cursor: pointer; }
 .button:hover { background: var(--navy-light); }
+.button:disabled { cursor: wait; opacity: .65; }
 .button.secondary { background: var(--white); color: var(--navy); }
 .button.secondary:hover { background: var(--grey); }
 .notice { margin-top: 18px; padding: 14px 16px; border: 1px solid #e0c200; border-radius: 4px; background: #fff8d8; line-height: 1.5; }
+.notice.error { border-color: #d96b6b; background: #fff0f0; color: #8a1c1c; }
+.asset-table-wrap { margin-top: 18px; overflow-x: auto; border: 1px solid var(--border); border-radius: 6px; }
+.asset-table-wrap table { width: 100%; min-width: 680px; border-collapse: collapse; background: var(--white); }
+.asset-table-wrap th, .asset-table-wrap td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.asset-table-wrap th { background: var(--grey); color: var(--navy); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.asset-table-wrap tr:last-child td { border-bottom: 0; }
+.empty-state { padding: 18px; color: var(--grey-dark); }
 .embedded-frame { width: 100%; height: min(72vh, 760px); margin-top: 20px; border: 1px solid var(--border); border-radius: 6px; background: var(--grey); }
 .status-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
 .status-card { padding: 16px; background: var(--grey); border: 1px solid var(--border); border-radius: 6px; }
